@@ -2,27 +2,28 @@ package main
 
 import (
 	"fmt"
-	"github.com/alessio-perugini/f1calendar/pkg/f1calendar"
-	"github.com/rs/zerolog/log"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"time"
+
+	"github.com/alessio-perugini/f1calendar/pkg/f1calendar"
+	"github.com/rs/zerolog/log"
 )
 
 const f1CalendarEndpoint = "https://raw.githubusercontent.com/sportstimes/f1/main/_db/f1/2021.json"
 
 type MessageFired struct {
 	Message string
-	Time *time.Timer
+	Time    *time.Timer
 }
 
-var(
+var (
 	readyToBeFiredAlerts = make([]MessageFired, 0, 100)
-	mutex sync.Mutex // had to lock the fired msg otherwise the callback func would print only the last seen value
-	teleBot *Telegram // TODO not cool
+	mutex                sync.Mutex // had to lock the fired msg otherwise the callback func would print only the last seen value
+	teleBot              *Telegram  // TODO not cool
 )
 
 func main() {
@@ -36,7 +37,7 @@ func main() {
 
 	// TODO move in domain logic and create a dedicated service
 
-	time.AfterFunc(24 * time.Hour, checkEvery24Hours)
+	time.AfterFunc(24*time.Hour, checkEvery24Hours)
 
 	prepareNotificationTriggers(teleBot)
 
@@ -56,7 +57,7 @@ func checkEvery24Hours() {
 		prepareNotificationTriggers(teleBot)
 	}
 
-	time.AfterFunc(24 * time.Hour, checkEvery24Hours)
+	time.AfterFunc(24*time.Hour, checkEvery24Hours)
 }
 
 func clearOldReadyAlerts() {
@@ -69,6 +70,7 @@ func clearOldReadyAlerts() {
 
 func prepareNotificationTriggers(teleBot *Telegram) {
 	clearOldReadyAlerts()
+
 	calendar := getF1Calendar()
 	now := time.Now()
 
@@ -76,11 +78,12 @@ func prepareNotificationTriggers(teleBot *Telegram) {
 		type sessionInfo struct {
 			Name, Time string
 		}
-		isSprintQuali := race.Sessions.SprintQualifying != nil
 
 		// sorting ASC
 		timeSessions := make([]sessionInfo, 0, 6)
 		timeSessions = append(timeSessions, sessionInfo{Name: "FP1", Time: race.Sessions.Fp1})
+
+		isSprintQuali := race.Sessions.SprintQualifying != nil
 
 		if isSprintQuali {
 			timeSessions = append(timeSessions, sessionInfo{Name: "QUALI", Time: race.Sessions.Qualifying})
@@ -103,6 +106,7 @@ func prepareNotificationTriggers(teleBot *Telegram) {
 			t, err := time.Parse(time.RFC3339, v.Time)
 			if err != nil {
 				log.Err(err).Send()
+
 				return
 			}
 

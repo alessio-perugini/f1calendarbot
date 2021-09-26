@@ -5,6 +5,7 @@ import "encoding/json"
 func UnmarshalF1Calendar(data []byte) (F1Calendar, error) {
 	var r F1Calendar
 	err := json.Unmarshal(data, &r)
+
 	return r, err
 }
 

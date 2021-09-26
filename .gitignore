@@ -1,0 +1,8 @@
+/bin
+/vendor
+/.ci-gopath
+/build/*
+!/build/.gitkeep
+/coverage-*.out
+.env
+

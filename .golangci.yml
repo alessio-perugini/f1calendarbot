@@ -1,0 +1,66 @@
+run:
+  tests: true
+
+linters:
+  enable:
+    - asciicheck
+    - bodyclose
+    - deadcode
+    - depguard
+    - dogsled
+    - dupl
+    - durationcheck
+    - errcheck
+    - errorlint
+    - exhaustive
+    - exportloopref
+    - gci
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    - gofmt
+    - goheader
+    - goimports
+    - gomoddirectives
+    - gomodguard
+    - gosec
+    - govet
+    - importas
+    - ineffassign
+    - lll
+    - makezero
+    - megacheck
+    - misspell
+    - nakedret
+    - nestif
+    - paralleltest
+    - prealloc
+    - predeclared
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - staticcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unparam
+    - varcheck
+    - wastedassign
+    - whitespace
+    - wsl
+  disable:
+    - gochecknoglobals # disabled since we use a global variable to define the application version
+    - gochecknoinits # disabled since we an init function to configure sentry
+    - golint # deprecated, use revive instead
+    - gosimple # deprecated, use staticcheck instead
+    - interfacer # deprecated, no replacement suggested
+    - unused # deprecated, use staticcheck instead
+    - maligned # deprecated, replaced by govet 'fieldalignment'
+    - scopelint # deprecated, replaced by exportloopref
+  fast: false
+
+linters-settings:
+  gofmt:
+    simplify: true

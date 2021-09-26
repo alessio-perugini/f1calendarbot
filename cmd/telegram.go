@@ -2,18 +2,19 @@ package main
 
 import (
 	"fmt"
-	"github.com/rs/zerolog/log"
-	tb "github.com/tucnak/telebot"
 	"sync"
 	"time"
+
+	"github.com/rs/zerolog/log"
+	tb "github.com/tucnak/telebot"
 )
 
 type Telegram struct {
-	tBot   *tb.Bot
+	tBot *tb.Bot
 
 	// key=userId value=Chat
 	subscribedUsers map[int]*tb.User
-	mux sync.Mutex
+	mux             sync.Mutex
 }
 
 func NewTelegramBot(tkn string) *Telegram {
@@ -27,7 +28,7 @@ func NewTelegramBot(tkn string) *Telegram {
 	}
 
 	return &Telegram{
-		tBot: tBot,
+		tBot:            tBot,
 		subscribedUsers: make(map[int]*tb.User, 100),
 	}
 }
@@ -54,8 +55,8 @@ func (t *Telegram) Stop() {
 	t.tBot.Stop()
 }
 
-func (t *Telegram) SendTelegramMessage(chatId string, text string) {
-	chat, _ := t.tBot.ChatByID(chatId)
+func (t *Telegram) SendTelegramMessage(chatID string, text string) {
+	chat, _ := t.tBot.ChatByID(chatID)
 	t.tBot.Send(chat, text)
 }
 
