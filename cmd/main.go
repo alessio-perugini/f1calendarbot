@@ -39,6 +39,7 @@ func main() {
 	},
 	)
 
+	log.Info().Msgf("Server is starting...")
 	go tb.Start()
 
 	application.NewAlert(raceWeekRepository, subscriptionService, tb).Start()
@@ -47,6 +48,7 @@ func main() {
 	signal.Notify(signalCh, os.Interrupt)
 
 	<-signalCh
+	log.Info().Msgf("Server is stopping...")
 
 	tb.Stop()
 }

@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/alessio-perugini/f1calendar/pkg/domain"
-	"github.com/rs/zerolog/log"
 )
 
 type subscription struct {
@@ -22,8 +21,6 @@ func (s *subscription) Subscribe(userID int) {
 
 	if _, ok := s.subscribedUsers[userID]; !ok {
 		s.subscribedUsers[userID] = true
-
-		log.Info().Msgf("userID %d has been subbed!", userID)
 	}
 }
 
@@ -33,8 +30,6 @@ func (s *subscription) Unsubscribe(userID int) {
 
 	if _, ok := s.subscribedUsers[userID]; ok {
 		delete(s.subscribedUsers, userID)
-
-		log.Info().Msgf("userID: %d has been un-subbed!", userID)
 	}
 }
 

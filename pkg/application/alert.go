@@ -69,6 +69,8 @@ func (a *alert) prepareNotificationTriggers() {
 		)
 		a.mutex.Unlock()
 	}
+
+	log.Info().Msgf("next f1 events is %s ", calendar.Location)
 }
 
 func (a *alert) sendAlert() {
