@@ -1,7 +1,8 @@
 package domain
 
 type SubscriptionService interface {
-	Subscribe(int)
-	Unsubscribe(int)
-	GetAllSubscribed() []int
+	Subscribe(interface{})
+	Unsubscribe(interface{})
+	GetAllSubscribedUsers() []int
+	GetAllSubscribedGroups() []int64
 }

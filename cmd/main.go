@@ -26,20 +26,41 @@ func main() {
 	tb.LoadCustomHandler("/subscribe", func(m *telebot.Message) {
 		handler.NewSubscriptionHandler(subscriptionService)(m)
 
-		log.Info().Msgf("[%d] @%s has been subbed!", m.Sender.ID, m.Sender.Username)
-		tb.SendMessageTo(fmt.Sprintf("%d", m.Sender.ID), "You have been subscribed successfully!")
+		chatID := fmt.Sprintf("%d", m.Sender.ID)
+		username := m.Sender.Username
+		if !m.Private() {
+			chatID = fmt.Sprintf("%d", m.Chat.ID)
+			username = m.Chat.Title
+
+			log.Info().Msgf("[%s] group `%s` has been subbed!", chatID, username)
+		} else {
+			log.Info().Msgf("[%s] user `@%s` has been subbed!", chatID, username)
+		}
+
+		tb.SendMessageTo(chatID, "You have been subscribed successfully!")
 	},
 	)
 
 	tb.LoadCustomHandler("/unsubscribe", func(m *telebot.Message) {
 		handler.NewUnSubscriptionHandler(subscriptionService)(m)
 
-		log.Info().Msgf("[%d] @%s has been un-subbed!", m.Sender.ID, m.Sender.Username)
-		tb.SendMessageTo(fmt.Sprintf("%d", m.Sender.ID), "You have been un-subscribed successfully!")
+		chatID := fmt.Sprintf("%d", m.Sender.ID)
+		username := m.Sender.Username
+		if !m.Private() {
+			chatID = fmt.Sprintf("%d", m.Chat.ID)
+			username = m.Chat.Title
+
+			log.Info().Msgf("[%s] group `%s` has been un-subbed!", chatID, username)
+		} else {
+			log.Info().Msgf("[%s] user `@%s` has been un-subbed!", chatID, username)
+		}
+
+		tb.SendMessageTo(chatID, "You have been un-subscribed successfully!")
 	},
 	)
 
 	log.Info().Msgf("Server is starting...")
+
 	go tb.Start()
 
 	application.NewAlert(raceWeekRepository, subscriptionService, tb).Start()

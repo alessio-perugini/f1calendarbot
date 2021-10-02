@@ -7,7 +7,11 @@ import (
 
 func NewSubscriptionHandler(subService domain.SubscriptionService) func(m *tb.Message) {
 	return func(m *tb.Message) {
-		subService.Subscribe(m.Sender.ID)
+		if !m.Private() {
+			subService.Subscribe(m.Chat.ID)
+		} else {
+			subService.Subscribe(m.Sender.ID)
+		}
 	}
 }
 
