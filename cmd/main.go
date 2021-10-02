@@ -26,7 +26,7 @@ func main() {
 	tb.LoadCustomHandler("/subscribe", func(m *telebot.Message) {
 		handler.NewSubscriptionHandler(subscriptionService)(m)
 
-		chatID := fmt.Sprintf("%d", m.Sender.ID)
+		chatID := fmt.Sprintf("%d", int64(m.Sender.ID))
 		username := m.Sender.Username
 		if !m.Private() {
 			chatID = fmt.Sprintf("%d", m.Chat.ID)
@@ -44,7 +44,7 @@ func main() {
 	tb.LoadCustomHandler("/unsubscribe", func(m *telebot.Message) {
 		handler.NewUnSubscriptionHandler(subscriptionService)(m)
 
-		chatID := fmt.Sprintf("%d", m.Sender.ID)
+		chatID := fmt.Sprintf("%d", int64(m.Sender.ID))
 		username := m.Sender.Username
 		if !m.Private() {
 			chatID = fmt.Sprintf("%d", m.Chat.ID)

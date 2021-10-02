@@ -10,13 +10,13 @@ func NewSubscriptionHandler(subService domain.SubscriptionService) func(m *tb.Me
 		if !m.Private() {
 			subService.Subscribe(m.Chat.ID)
 		} else {
-			subService.Subscribe(m.Sender.ID)
+			subService.Subscribe(int64(m.Sender.ID))
 		}
 	}
 }
 
 func NewUnSubscriptionHandler(subService domain.SubscriptionService) func(m *tb.Message) {
 	return func(m *tb.Message) {
-		subService.Unsubscribe(m.Sender.ID)
+		subService.Unsubscribe(int64(m.Sender.ID))
 	}
 }

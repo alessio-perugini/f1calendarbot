@@ -2,6 +2,8 @@ VERSION ?= "latest"
 
 build:
 	CGO_ENABLED=0 go build -o bin/cmd ./cmd
+	env GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o bin/cmd.exe cmd/main.go
+
 .PHONY: build
 
 test:

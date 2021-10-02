@@ -83,17 +83,9 @@ func (a *alert) sendAlert() {
 
 		log.Debug().Msgf(msg.Message)
 
-		go func() {
-			for _, userID := range a.subscriptionService.GetAllSubscribedUsers() {
-				a.tg.SendMessageTo(fmt.Sprintf("%d", userID), msg.Message)
-			}
-		}()
-
-		go func() {
-			for _, groupID := range a.subscriptionService.GetAllSubscribedGroups() {
-				a.tg.SendMessageTo(fmt.Sprintf("%d", groupID), msg.Message)
-			}
-		}()
+		for _, userID := range a.subscriptionService.GetAllSubscribedChats() {
+			a.tg.SendMessageTo(fmt.Sprintf("%d", userID), msg.Message)
+		}
 	}
 }
 
