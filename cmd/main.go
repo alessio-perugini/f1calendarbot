@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 
 	"github.com/alessio-perugini/f1calendar/pkg/application"
+	"github.com/alessio-perugini/f1calendar/pkg/domain"
 	"github.com/alessio-perugini/f1calendar/pkg/infrastructure"
 	"github.com/alessio-perugini/f1calendar/pkg/infrastructure/telegram"
 	"github.com/alessio-perugini/f1calendar/pkg/infrastructure/telegram/handler"
@@ -20,6 +23,9 @@ func main() {
 	}
 
 	subscriptionService := application.NewSubscriptionService()
+
+	loadSubscribedChats(subscriptionService)
+
 	raceWeekRepository := infrastructure.NewRaceWeekRepository()
 	tb := telegram.NewTelegramRepository(tkn, nil)
 
@@ -72,4 +78,43 @@ func main() {
 	log.Info().Msgf("Server is stopping...")
 
 	tb.Stop()
+	dumpSubscribedChats(subscriptionService)
+}
+
+func dumpSubscribedChats(subService domain.SubscriptionService) {
+	fPath := "./subscribedChats.txt"
+	subbedChats := subService.GetAllSubscribedChats()
+
+	var dataToWrite []byte
+
+	for _, v := range subbedChats {
+		dataToWrite = append(dataToWrite, []byte(fmt.Sprintf("%v\n", v))...)
+	}
+
+	if err := os.WriteFile(fPath, dataToWrite, os.ModePerm); err != nil {
+		log.Err(err).Send()
+	}
+}
+
+func loadSubscribedChats(subService domain.SubscriptionService) {
+	fPath := "./subscribedChats.txt"
+
+	buf, err := os.Open(fPath)
+	if err != nil {
+		log.Err(err).Send()
+		return
+	}
+
+	defer buf.Close()
+
+	snl := bufio.NewScanner(buf)
+	for snl.Scan() {
+		chaID, _ := strconv.ParseInt(snl.Text(), 10, 64)
+		subService.Subscribe(chaID)
+	}
+
+	if snl.Err() != nil {
+		log.Err(err).Send()
+		return
+	}
 }

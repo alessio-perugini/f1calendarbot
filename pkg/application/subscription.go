@@ -7,13 +7,13 @@ import (
 )
 
 type subscription struct {
-	subscribedChats  map[int64]bool
-	mux sync.RWMutex
+	subscribedChats map[int64]bool
+	mux             sync.RWMutex
 }
 
 func NewSubscriptionService() domain.SubscriptionService {
 	return &subscription{
-		subscribedChats:  make(map[int64]bool, 100),
+		subscribedChats: make(map[int64]bool, 100),
 	}
 }
 
