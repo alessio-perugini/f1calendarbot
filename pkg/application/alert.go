@@ -91,14 +91,16 @@ func (a *alert) sendAlert() {
 
 // todo maybe implement custom checker.
 func (a *alert) checkEvery24Hours() {
-	now := time.Now().Weekday()
+	now := time.Now()
 
 	log.Debug().Msgf("checking for new f1 calendar events")
 
 	// avoid unnecessary http calls
-	if now == time.Sunday || now >= time.Thursday {
+	if now.Weekday() == time.Sunday || now.Weekday() >= time.Thursday {
 		a.prepareNotificationTriggers()
 	}
 
-	time.AfterFunc(24*time.Hour, a.checkEvery24Hours)
+	tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 1, 0, 0, now.Location())
+
+	time.AfterFunc(tomorrow.Sub(now), a.checkEvery24Hours)
 }
