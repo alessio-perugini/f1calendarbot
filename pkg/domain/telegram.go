@@ -1,6 +1,6 @@
 package domain
 
-import tb "github.com/tucnak/telebot"
+import tb "gopkg.in/tucnak/telebot.v2"
 
 type TelegramRepository interface {
 	SendMessageTo(chatID, message string)

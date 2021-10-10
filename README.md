@@ -9,3 +9,5 @@ You can go on telegram and search for: `@f1CalendarAlert_bot`
 `/subscribe` Use to receive notification
 
 `/unsubscribe` Use to no longer receive notification
+
+`/nextrace` Use to get the next GP info

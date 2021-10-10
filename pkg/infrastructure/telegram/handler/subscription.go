@@ -2,7 +2,7 @@ package handler
 
 import (
 	"github.com/alessio-perugini/f1calendar/pkg/domain"
-	tb "github.com/tucnak/telebot"
+	tb "gopkg.in/tucnak/telebot.v2"
 )
 
 func NewSubscriptionHandler(subService domain.SubscriptionService) func(m *tb.Message) {

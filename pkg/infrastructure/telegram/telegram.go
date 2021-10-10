@@ -5,7 +5,7 @@ import (
 
 	"github.com/alessio-perugini/f1calendar/pkg/domain"
 	"github.com/rs/zerolog/log"
-	tb "github.com/tucnak/telebot"
+	tb "gopkg.in/tucnak/telebot.v2"
 )
 
 type telegram struct {

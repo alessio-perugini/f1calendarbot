@@ -12,14 +12,19 @@ import (
 	"github.com/alessio-perugini/f1calendar/pkg/infrastructure"
 	"github.com/alessio-perugini/f1calendar/pkg/infrastructure/telegram"
 	"github.com/alessio-perugini/f1calendar/pkg/infrastructure/telegram/handler"
+	"github.com/alessio-perugini/f1calendar/pkg/util"
 	"github.com/rs/zerolog/log"
-	"github.com/tucnak/telebot"
+	"gopkg.in/tucnak/telebot.v2"
 )
 
+var version = "0.0.0"
+
 func main() {
+	log.Info().Msgf("f1calendar %s", version)
+
 	tkn := os.Getenv("F1CALENDAR__TELEGRAM_TOKEN")
 	if tkn == "" {
-		log.Err(fmt.Errorf("no valid telegram token provided")).Send()
+		log.Fatal().Msgf("no valid telegram token provided")
 	}
 
 	subscriptionService := application.NewSubscriptionService()
@@ -64,6 +69,11 @@ func main() {
 		tb.SendMessageTo(chatID, "You have been un-subscribed successfully!")
 	},
 	)
+
+	// TODO add caching layer
+	tb.LoadCustomHandler("/nextrace", func(m *telebot.Message) {
+		tb.SendMessageTo(util.GetChatID(m), raceWeekRepository.GetCalendar().String())
+	})
 
 	log.Info().Msgf("Server is starting...")
 
