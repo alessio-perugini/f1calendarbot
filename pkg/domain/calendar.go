@@ -17,7 +17,7 @@ type Session struct {
 }
 
 type F1RaceWeeRepository interface {
-	GetCalendar() *RaceWeek
+	GetRaceWeek() *RaceWeek
 }
 
 func (r *RaceWeek) String() string {

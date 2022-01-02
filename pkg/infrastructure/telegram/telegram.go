@@ -3,7 +3,7 @@ package telegram
 import (
 	"time"
 
-	"github.com/alessio-perugini/f1calendar/pkg/domain"
+	"github.com/alessio-perugini/f1calendarbot/pkg/domain"
 	"github.com/rs/zerolog/log"
 	tb "gopkg.in/tucnak/telebot.v2"
 )

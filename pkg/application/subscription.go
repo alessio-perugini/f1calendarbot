@@ -2,22 +2,20 @@ package application
 
 import (
 	"sync"
-
-	"github.com/alessio-perugini/f1calendar/pkg/domain"
 )
 
-type subscription struct {
+type Subscription struct {
 	subscribedChats map[int64]bool
 	mux             sync.RWMutex
 }
 
-func NewSubscriptionService() domain.SubscriptionService {
-	return &subscription{
+func NewSubscriptionService() *Subscription {
+	return &Subscription{
 		subscribedChats: make(map[int64]bool, 100),
 	}
 }
 
-func (s *subscription) Subscribe(id int64) {
+func (s *Subscription) Subscribe(id int64) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
@@ -26,7 +24,7 @@ func (s *subscription) Subscribe(id int64) {
 	}
 }
 
-func (s *subscription) Unsubscribe(id int64) {
+func (s *Subscription) Unsubscribe(id int64) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
@@ -35,7 +33,7 @@ func (s *subscription) Unsubscribe(id int64) {
 	}
 }
 
-func (s *subscription) GetAllSubscribedChats() []int64 {
+func (s *Subscription) GetAllSubscribedChats() []int64 {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 

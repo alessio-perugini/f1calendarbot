@@ -7,12 +7,12 @@ import (
 	"os/signal"
 	"strconv"
 
-	"github.com/alessio-perugini/f1calendar/pkg/application"
-	"github.com/alessio-perugini/f1calendar/pkg/domain"
-	"github.com/alessio-perugini/f1calendar/pkg/infrastructure"
-	"github.com/alessio-perugini/f1calendar/pkg/infrastructure/telegram"
-	"github.com/alessio-perugini/f1calendar/pkg/infrastructure/telegram/handler"
-	"github.com/alessio-perugini/f1calendar/pkg/util"
+	"github.com/alessio-perugini/f1calendarbot/pkg/application"
+	"github.com/alessio-perugini/f1calendarbot/pkg/domain"
+	"github.com/alessio-perugini/f1calendarbot/pkg/infrastructure"
+	"github.com/alessio-perugini/f1calendarbot/pkg/infrastructure/telegram"
+	"github.com/alessio-perugini/f1calendarbot/pkg/infrastructure/telegram/handler"
+	"github.com/alessio-perugini/f1calendarbot/pkg/util"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/tucnak/telebot.v2"
 )
@@ -37,7 +37,7 @@ func main() {
 	tb.LoadCustomHandler("/subscribe", func(m *telebot.Message) {
 		handler.NewSubscriptionHandler(subscriptionService)(m)
 
-		chatID := fmt.Sprintf("%d", int64(m.Sender.ID))
+		chatID := fmt.Sprintf("%d", m.Sender.ID)
 		username := m.Sender.Username
 		if !m.Private() {
 			chatID = fmt.Sprintf("%d", m.Chat.ID)
@@ -55,7 +55,7 @@ func main() {
 	tb.LoadCustomHandler("/unsubscribe", func(m *telebot.Message) {
 		handler.NewUnSubscriptionHandler(subscriptionService)(m)
 
-		chatID := fmt.Sprintf("%d", int64(m.Sender.ID))
+		chatID := fmt.Sprintf("%d", m.Sender.ID)
 		username := m.Sender.Username
 		if !m.Private() {
 			chatID = fmt.Sprintf("%d", m.Chat.ID)
@@ -72,7 +72,7 @@ func main() {
 
 	// TODO add caching layer
 	tb.LoadCustomHandler("/nextrace", func(m *telebot.Message) {
-		tb.SendMessageTo(util.GetChatID(m), raceWeekRepository.GetCalendar().String())
+		tb.SendMessageTo(util.GetChatID(m), raceWeekRepository.GetRaceWeek().String())
 	})
 
 	log.Info().Msgf("Server is starting...")

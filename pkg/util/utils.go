@@ -22,5 +22,5 @@ func GetChatID(m *telebot.Message) string {
 		return fmt.Sprintf("%d", m.Chat.ID)
 	}
 
-	return fmt.Sprintf("%d", int64(m.Sender.ID))
+	return fmt.Sprintf("%d", m.Sender.ID)
 }

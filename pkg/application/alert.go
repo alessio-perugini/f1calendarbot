@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alessio-perugini/f1calendar/pkg/domain"
+	"github.com/alessio-perugini/f1calendarbot/pkg/domain"
 	"github.com/rs/zerolog/log"
 )
 
-type alert struct {
+type Alert struct {
 	raceWeekRepository  domain.F1RaceWeeRepository
 	tg                  domain.TelegramRepository
 	subscriptionService domain.SubscriptionService
@@ -27,19 +27,19 @@ func NewAlert(
 	raceWeekRepository domain.F1RaceWeeRepository,
 	subscriptionService domain.SubscriptionService,
 	tg domain.TelegramRepository,
-) domain.Alert {
-	return &alert{
+) *Alert {
+	return &Alert{
 		raceWeekRepository:  raceWeekRepository,
 		subscriptionService: subscriptionService,
 		tg:                  tg,
 	}
 }
 
-func (a *alert) Start() {
+func (a *Alert) Start() {
 	a.checkEvery24Hours()
 }
 
-func (a *alert) clearOldReadyAlerts() {
+func (a *Alert) clearOldReadyAlerts() {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
@@ -50,11 +50,16 @@ func (a *alert) clearOldReadyAlerts() {
 	a.readyToBeFiredAlerts = make([]messageToBeFired, 0, 100)
 }
 
-func (a *alert) prepareNotificationTriggers() {
+func (a *Alert) prepareNotificationTriggers() {
 	a.clearOldReadyAlerts()
 
 	now := time.Now()
-	calendar := a.raceWeekRepository.GetCalendar()
+	calendar := a.raceWeekRepository.GetRaceWeek()
+
+	if calendar == nil {
+		log.Info().Msgf("No race available")
+		return
+	}
 
 	for _, session := range calendar.Sessions {
 		t10minutes := session.Time.Add(-10 * time.Minute)
@@ -73,7 +78,7 @@ func (a *alert) prepareNotificationTriggers() {
 	log.Info().Msgf("next f1 events is %s ", calendar.Location)
 }
 
-func (a *alert) sendAlert() {
+func (a *Alert) sendAlert() {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
@@ -90,7 +95,7 @@ func (a *alert) sendAlert() {
 }
 
 // todo maybe implement custom checker.
-func (a *alert) checkEvery24Hours() {
+func (a *Alert) checkEvery24Hours() {
 	now := time.Now()
 
 	log.Debug().Msgf("checking for new f1 calendar events")
