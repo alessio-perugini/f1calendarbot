@@ -1,18 +1,25 @@
-package application
+package alert
 
 import (
 	"fmt"
 	"sync"
 	"time"
 
-	"github.com/alessio-perugini/f1calendarbot/pkg/domain"
 	"github.com/rs/zerolog/log"
+
+	"github.com/alessio-perugini/f1calendarbot/pkg/f1calendar"
+	"github.com/alessio-perugini/f1calendarbot/pkg/subscription"
+	"github.com/alessio-perugini/f1calendarbot/pkg/telegram"
 )
 
+type Interface interface {
+	Start()
+}
+
 type Alert struct {
-	raceWeekRepository  domain.F1RaceWeeRepository
-	tg                  domain.TelegramRepository
-	subscriptionService domain.SubscriptionService
+	raceWeekRepository  f1calendar.RaceWeekRepository
+	tg                  telegram.Repository
+	subscriptionService subscription.Service
 
 	mutex                sync.RWMutex
 	readyToBeFiredAlerts []messageToBeFired
@@ -23,10 +30,10 @@ type messageToBeFired struct {
 	Time    *time.Timer
 }
 
-func NewAlert(
-	raceWeekRepository domain.F1RaceWeeRepository,
-	subscriptionService domain.SubscriptionService,
-	tg domain.TelegramRepository,
+func New(
+	raceWeekRepository f1calendar.RaceWeekRepository,
+	subscriptionService subscription.Service,
+	tg telegram.Repository,
 ) *Alert {
 	return &Alert{
 		raceWeekRepository:  raceWeekRepository,

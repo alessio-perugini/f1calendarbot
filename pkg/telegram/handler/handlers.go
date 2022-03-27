@@ -1,21 +1,24 @@
 package handler
 
 import (
-	"github.com/alessio-perugini/f1calendarbot/pkg/domain"
-	"github.com/alessio-perugini/f1calendarbot/pkg/util"
 	tb "gopkg.in/telebot.v3"
+
+	"github.com/alessio-perugini/f1calendarbot/pkg/f1calendar"
+	"github.com/alessio-perugini/f1calendarbot/pkg/subscription"
+	"github.com/alessio-perugini/f1calendarbot/pkg/telegram"
+	"github.com/alessio-perugini/f1calendarbot/pkg/util"
 )
 
 type Handler struct {
-	bot                 domain.TelegramRepository
-	subscriptionService domain.SubscriptionService
-	raceWeekRepository  domain.F1RaceWeeRepository
+	bot                 telegram.Repository
+	subscriptionService subscription.Service
+	raceWeekRepository  f1calendar.RaceWeekRepository
 }
 
 func NewHandler(
-	bot domain.TelegramRepository,
-	subscriptionService domain.SubscriptionService,
-	raceWeekRepository domain.F1RaceWeeRepository,
+	bot telegram.Repository,
+	subscriptionService subscription.Service,
+	raceWeekRepository f1calendar.RaceWeekRepository,
 ) *Handler {
 	return &Handler{
 		bot:                 bot,
@@ -27,6 +30,7 @@ func NewHandler(
 func (h *Handler) OnSubscribe(c tb.Context) error {
 	chatID := util.GetChatID(c.Message())
 	h.subscriptionService.Subscribe(chatID)
+
 	return h.bot.SendMessageTo(chatID, "You have been subscribed successfully!")
 }
 

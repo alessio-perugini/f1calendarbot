@@ -1,14 +1,13 @@
-package infrastructure
+package f1calendar
 
 import (
 	"io/ioutil"
 	"net/http"
 	"time"
 
-	"github.com/alessio-perugini/f1calendarbot/pkg/domain"
-	"github.com/alessio-perugini/f1calendarbot/pkg/f1calendar"
-	"github.com/alessio-perugini/f1calendarbot/pkg/util"
 	"github.com/rs/zerolog/log"
+
+	"github.com/alessio-perugini/f1calendarbot/pkg/util"
 )
 
 const f1CalendarEndpoint = "https://raw.githubusercontent.com/sportstimes/f1/main/_db/f1/2022.json"
@@ -19,7 +18,7 @@ func NewRaceWeekRepository() *F1RaceWeekRepository {
 	return &F1RaceWeekRepository{}
 }
 
-func (c *F1RaceWeekRepository) getF1Calendar() *f1calendar.F1Calendar {
+func (c *F1RaceWeekRepository) getF1Calendar() *F1Calendar {
 	r, err := http.Get(f1CalendarEndpoint)
 	if err != nil || r == nil {
 		return nil
@@ -33,7 +32,7 @@ func (c *F1RaceWeekRepository) getF1Calendar() *f1calendar.F1Calendar {
 		return nil
 	}
 
-	calendar, err := f1calendar.UnmarshalF1Calendar(body)
+	calendar, err := UnmarshalF1Calendar(body)
 	if err != nil {
 		log.Err(err).Send()
 		return nil
@@ -42,12 +41,12 @@ func (c *F1RaceWeekRepository) getF1Calendar() *f1calendar.F1Calendar {
 	return &calendar
 }
 
-func (c *F1RaceWeekRepository) GetRaceWeek() *domain.RaceWeek {
+func (c *F1RaceWeekRepository) GetRaceWeek() *RaceWeek {
 	return c.mapF1CalendarToRaceWeek(c.getF1Calendar())
 }
 
-func (c *F1RaceWeekRepository) mapF1CalendarToRaceWeek(calendar *f1calendar.F1Calendar) *domain.RaceWeek {
-	sessions := make([]*domain.Session, 0, 5)
+func (c *F1RaceWeekRepository) mapF1CalendarToRaceWeek(calendar *F1Calendar) *RaceWeek {
+	sessions := make([]*Session, 0, 5)
 	now := time.Now()
 
 	for _, race := range calendar.Races {
@@ -63,14 +62,14 @@ func (c *F1RaceWeekRepository) mapF1CalendarToRaceWeek(calendar *f1calendar.F1Ca
 				continue
 			}
 
-			sessions = append(sessions, &domain.Session{
+			sessions = append(sessions, &Session{
 				Name: c.getSessionName(i, hasSprintRace),
 				Time: t,
 			})
 		}
 
 		if len(sessions) > 0 {
-			return &domain.RaceWeek{
+			return &RaceWeek{
 				Location: race.Location,
 				Round:    int(race.Round),
 				Sessions: sessions,
@@ -108,7 +107,7 @@ func (c *F1RaceWeekRepository) getSessionName(nSession int, hasSprintRace bool) 
 	return "GP"
 }
 
-func (c *F1RaceWeekRepository) getSessionsTime(sessions f1calendar.Sessions, hasSprintRace bool) []time.Time {
+func (c *F1RaceWeekRepository) getSessionsTime(sessions Sessions, hasSprintRace bool) []time.Time {
 	if hasSprintRace {
 		return []time.Time{
 			util.MustParseTime(sessions.Fp1),

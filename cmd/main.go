@@ -3,17 +3,18 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/alessio-perugini/f1calendarbot/pkg/infrastructure/telegram/handler"
 	"os"
 	"os/signal"
 	"runtime/debug"
 	"strconv"
 
-	"github.com/alessio-perugini/f1calendarbot/pkg/application"
-	"github.com/alessio-perugini/f1calendarbot/pkg/domain"
-	"github.com/alessio-perugini/f1calendarbot/pkg/infrastructure"
-	"github.com/alessio-perugini/f1calendarbot/pkg/infrastructure/telegram"
 	"github.com/rs/zerolog/log"
+
+	"github.com/alessio-perugini/f1calendarbot/pkg/alert"
+	"github.com/alessio-perugini/f1calendarbot/pkg/f1calendar"
+	"github.com/alessio-perugini/f1calendarbot/pkg/subscription"
+	"github.com/alessio-perugini/f1calendarbot/pkg/telegram"
+	"github.com/alessio-perugini/f1calendarbot/pkg/telegram/handler"
 )
 
 func main() {
@@ -26,13 +27,13 @@ func main() {
 		log.Fatal().Msgf("no valid telegram token provided")
 	}
 
-	subscriptionService := application.NewSubscriptionService()
+	subscriptionService := subscription.NewSubscriptionService()
 
 	loadSubscribedChats(subscriptionService)
 	defer dumpSubscribedChats(subscriptionService)
 
 	tb := telegram.NewTelegramRepository(tkn)
-	raceWeekRepo := infrastructure.NewRaceWeekRepository()
+	raceWeekRepo := f1calendar.NewRaceWeekRepository()
 	h := handler.NewHandler(tb, subscriptionService, raceWeekRepo)
 
 	// load handlers
@@ -45,7 +46,7 @@ func main() {
 
 	go tb.Start()
 
-	application.NewAlert(raceWeekRepo, subscriptionService, tb).Start()
+	alert.New(raceWeekRepo, subscriptionService, tb).Start()
 
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, os.Interrupt)
@@ -56,7 +57,7 @@ func main() {
 	tb.Stop()
 }
 
-func dumpSubscribedChats(subService domain.SubscriptionService) {
+func dumpSubscribedChats(subService subscription.Service) {
 	fPath := "./subscribedChats.txt"
 	subbedChats := subService.GetAllSubscribedChats()
 
@@ -71,7 +72,7 @@ func dumpSubscribedChats(subService domain.SubscriptionService) {
 	}
 }
 
-func loadSubscribedChats(subService domain.SubscriptionService) {
+func loadSubscribedChats(subService subscription.Service) {
 	fPath := "./subscribedChats.txt"
 
 	buf, err := os.Open(fPath)

@@ -1,9 +1,13 @@
-package domain
+package f1calendar
 
 import (
 	"fmt"
 	"time"
 )
+
+type RaceWeekRepository interface {
+	GetRaceWeek() *RaceWeek
+}
 
 type RaceWeek struct {
 	Location string
@@ -14,10 +18,6 @@ type RaceWeek struct {
 type Session struct {
 	Name string
 	Time time.Time
-}
-
-type F1RaceWeeRepository interface {
-	GetRaceWeek() *RaceWeek
 }
 
 func (r *RaceWeek) String() string {

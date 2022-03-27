@@ -1,8 +1,14 @@
-package application
+package subscription
 
 import (
 	"sync"
 )
+
+type Service interface {
+	Subscribe(int64)
+	Unsubscribe(int64)
+	GetAllSubscribedChats() []int64
+}
 
 type Subscription struct {
 	mux             sync.RWMutex

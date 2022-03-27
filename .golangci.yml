@@ -49,7 +49,6 @@ linters:
     - varcheck
     - wastedassign
     - whitespace
-    - wsl
   disable:
     - gochecknoglobals # disabled since we use a global variable to define the application version
     - gochecknoinits # disabled since we an init function to configure sentry
@@ -59,8 +58,18 @@ linters:
     - unused # deprecated, use staticcheck instead
     - maligned # deprecated, replaced by govet 'fieldalignment'
     - scopelint # deprecated, replaced by exportloopref
+    - wsl
   fast: false
 
 linters-settings:
   gofmt:
     simplify: true
+  goimports:
+    local-prefixes: github.com/alessio-perugini/f1calendarbot
+  gci:
+    sections:
+      - standard # Captures all standard packages if they do not match another section.
+      - default # Contains all imports that could not be matched to another section type.
+      - prefix(github.com/alessio-perugini/f1calendarbot)
+    section-separators:
+      - newLine
