@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
-
-	"github.com/alessio-perugini/f1calendarbot/pkg/util"
 )
 
 const f1CalendarEndpoint = "https://raw.githubusercontent.com/sportstimes/f1/main/_db/f1/2022.json"
@@ -110,19 +108,19 @@ func (c *F1RaceWeekRepository) getSessionName(nSession int, hasSprintRace bool) 
 func (c *F1RaceWeekRepository) getSessionsTime(sessions Sessions, hasSprintRace bool) []time.Time {
 	if hasSprintRace {
 		return []time.Time{
-			util.MustParseTime(sessions.Fp1),
-			util.MustParseTime(sessions.Qualifying),
-			util.MustParseTime(sessions.Fp2),
-			util.MustParseTime(*sessions.SprintQualifying),
-			util.MustParseTime(sessions.Gp),
+			mustParseTime(sessions.Fp1),
+			mustParseTime(sessions.Qualifying),
+			mustParseTime(sessions.Fp2),
+			mustParseTime(*sessions.SprintQualifying),
+			mustParseTime(sessions.Gp),
 		}
 	}
 
 	return []time.Time{
-		util.MustParseTime(sessions.Fp1),
-		util.MustParseTime(sessions.Fp2),
-		util.MustParseTime(*sessions.Fp3),
-		util.MustParseTime(sessions.Qualifying),
-		util.MustParseTime(sessions.Gp),
+		mustParseTime(sessions.Fp1),
+		mustParseTime(sessions.Fp2),
+		mustParseTime(*sessions.Fp3),
+		mustParseTime(sessions.Qualifying),
+		mustParseTime(sessions.Gp),
 	}
 }
