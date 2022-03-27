@@ -2,7 +2,7 @@
 
 A simple telegram bot that will notify you 10 minutes before a new f1 sessions starts.
 
-You can go on telegram and search for: `@f1CalendarAlert_bot`
+You can go on telegram and search for: [@f1CalendarAlert_bot](https://t.me/f1CalendarAlert_bot)
 
 ## ⌨️ Commands
 
