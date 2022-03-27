@@ -1,8 +1,6 @@
-APP_VERSION ?= "latest"
-
 build:
-	@CGO_ENABLED=0 go build -a -ldflags "-X main.version=${APP_VERSION}" -o bin/cmd ./cmd
-	env GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -a -ldflags "-X main.version=${APP_VERSION}" -o bin/cmd.exe cmd/main.go
+	@CGO_ENABLED=0 go build -a -o bin/cmd ./cmd
+	env GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -a -o bin/cmd.exe cmd/main.go
 
 .PHONY: build
 
@@ -19,5 +17,5 @@ lint:
 .PHONY: lint
 
 mod-upgrade:
-	@go get -u ./... && make mod-tidy
+	@go get -u ./...
 .PHONY: mod-upgrade

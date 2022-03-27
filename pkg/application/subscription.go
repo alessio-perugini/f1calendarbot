@@ -5,8 +5,8 @@ import (
 )
 
 type Subscription struct {
-	subscribedChats map[int64]bool
 	mux             sync.RWMutex
+	subscribedChats map[int64]bool
 }
 
 func NewSubscriptionService() *Subscription {

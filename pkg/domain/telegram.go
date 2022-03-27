@@ -1,10 +1,10 @@
 package domain
 
-import tb "gopkg.in/tucnak/telebot.v2"
+import tb "gopkg.in/telebot.v3"
 
 type TelegramRepository interface {
-	SendMessageTo(chatID, message string)
-	LoadCustomHandler(string, func(m *tb.Message))
+	LoadHandler(endpoint string, handler tb.HandlerFunc)
+	SendMessageTo(chatID int64, message string) error
 	Start()
 	Stop()
 }

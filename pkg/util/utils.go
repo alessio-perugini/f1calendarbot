@@ -1,11 +1,10 @@
 package util
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/rs/zerolog/log"
-	"gopkg.in/tucnak/telebot.v2"
+	"gopkg.in/telebot.v3"
 )
 
 func MustParseTime(t string) time.Time {
@@ -17,10 +16,10 @@ func MustParseTime(t string) time.Time {
 	return result.In(time.Local)
 }
 
-func GetChatID(m *telebot.Message) string {
+func GetChatID(m *telebot.Message) int64 {
 	if !m.Private() {
-		return fmt.Sprintf("%d", m.Chat.ID)
+		return m.Chat.ID
 	}
 
-	return fmt.Sprintf("%d", m.Sender.ID)
+	return m.Sender.ID
 }

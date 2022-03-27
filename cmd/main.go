@@ -3,24 +3,23 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/alessio-perugini/f1calendarbot/pkg/infrastructure/telegram/handler"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"strconv"
 
 	"github.com/alessio-perugini/f1calendarbot/pkg/application"
 	"github.com/alessio-perugini/f1calendarbot/pkg/domain"
 	"github.com/alessio-perugini/f1calendarbot/pkg/infrastructure"
 	"github.com/alessio-perugini/f1calendarbot/pkg/infrastructure/telegram"
-	"github.com/alessio-perugini/f1calendarbot/pkg/infrastructure/telegram/handler"
-	"github.com/alessio-perugini/f1calendarbot/pkg/util"
 	"github.com/rs/zerolog/log"
-	"gopkg.in/tucnak/telebot.v2"
 )
 
-var version = "0.0.0"
-
 func main() {
-	log.Info().Msgf("f1calendar %s", version)
+	if buildInfo, ok := debug.ReadBuildInfo(); ok {
+		fmt.Println("f1calendar", buildInfo.String())
+	}
 
 	tkn := os.Getenv("F1CALENDAR__TELEGRAM_TOKEN")
 	if tkn == "" {
@@ -30,56 +29,23 @@ func main() {
 	subscriptionService := application.NewSubscriptionService()
 
 	loadSubscribedChats(subscriptionService)
+	defer dumpSubscribedChats(subscriptionService)
 
-	raceWeekRepository := infrastructure.NewRaceWeekRepository()
-	tb := telegram.NewTelegramRepository(tkn, nil)
+	tb := telegram.NewTelegramRepository(tkn)
+	raceWeekRepo := infrastructure.NewRaceWeekRepository()
+	h := handler.NewHandler(tb, subscriptionService, raceWeekRepo)
 
-	tb.LoadCustomHandler("/subscribe", func(m *telebot.Message) {
-		handler.NewSubscriptionHandler(subscriptionService)(m)
-
-		chatID := fmt.Sprintf("%d", m.Sender.ID)
-		username := m.Sender.Username
-		if !m.Private() {
-			chatID = fmt.Sprintf("%d", m.Chat.ID)
-			username = m.Chat.Title
-
-			log.Info().Msgf("[%s] group `%s` has been subbed!", chatID, username)
-		} else {
-			log.Info().Msgf("[%s] user `@%s` has been subbed!", chatID, username)
-		}
-
-		tb.SendMessageTo(chatID, "You have been subscribed successfully!")
-	},
-	)
-
-	tb.LoadCustomHandler("/unsubscribe", func(m *telebot.Message) {
-		handler.NewUnSubscriptionHandler(subscriptionService)(m)
-
-		chatID := fmt.Sprintf("%d", m.Sender.ID)
-		username := m.Sender.Username
-		if !m.Private() {
-			chatID = fmt.Sprintf("%d", m.Chat.ID)
-			username = m.Chat.Title
-
-			log.Info().Msgf("[%s] group `%s` has been un-subbed!", chatID, username)
-		} else {
-			log.Info().Msgf("[%s] user `@%s` has been un-subbed!", chatID, username)
-		}
-
-		tb.SendMessageTo(chatID, "You have been un-subscribed successfully!")
-	},
-	)
-
+	// load handlers
+	tb.LoadHandler("/subscribe", h.OnSubscribe)
+	tb.LoadHandler("/unsubscribe", h.OnUnsubscribe)
 	// TODO add caching layer
-	tb.LoadCustomHandler("/nextrace", func(m *telebot.Message) {
-		tb.SendMessageTo(util.GetChatID(m), raceWeekRepository.GetRaceWeek().String())
-	})
+	tb.LoadHandler("/nextrace", h.OnRaceWeek)
 
 	log.Info().Msgf("Server is starting...")
 
 	go tb.Start()
 
-	application.NewAlert(raceWeekRepository, subscriptionService, tb).Start()
+	application.NewAlert(raceWeekRepo, subscriptionService, tb).Start()
 
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, os.Interrupt)
@@ -88,7 +54,6 @@ func main() {
 	log.Info().Msgf("Server is stopping...")
 
 	tb.Stop()
-	dumpSubscribedChats(subscriptionService)
 }
 
 func dumpSubscribedChats(subService domain.SubscriptionService) {

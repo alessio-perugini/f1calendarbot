@@ -14,8 +14,8 @@ type Alert struct {
 	tg                  domain.TelegramRepository
 	subscriptionService domain.SubscriptionService
 
-	readyToBeFiredAlerts []messageToBeFired // todo check if pointer is needed here.
 	mutex                sync.RWMutex
+	readyToBeFiredAlerts []messageToBeFired
 }
 
 type messageToBeFired struct {
@@ -36,6 +36,12 @@ func NewAlert(
 }
 
 func (a *Alert) Start() {
+	a.prepareNotificationTriggers()
+
+	now := time.Now()
+	tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 1, 0, 0, now.Location())
+	time.Sleep(tomorrow.Sub(now))
+
 	a.checkEvery24Hours()
 }
 
@@ -82,30 +88,27 @@ func (a *Alert) sendAlert() {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
-	if len(a.readyToBeFiredAlerts) > 0 {
-		var msg messageToBeFired
-		msg, a.readyToBeFiredAlerts = a.readyToBeFiredAlerts[0], a.readyToBeFiredAlerts[1:]
+	if len(a.readyToBeFiredAlerts) == 0 {
+		return
+	}
 
-		log.Debug().Msgf(msg.Message)
+	var msg messageToBeFired
+	msg, a.readyToBeFiredAlerts = a.readyToBeFiredAlerts[0], a.readyToBeFiredAlerts[1:]
 
-		for _, userID := range a.subscriptionService.GetAllSubscribedChats() {
-			a.tg.SendMessageTo(fmt.Sprintf("%d", userID), msg.Message)
-		}
+	log.Debug().Msgf(msg.Message)
+
+	for _, userID := range a.subscriptionService.GetAllSubscribedChats() {
+		_ = a.tg.SendMessageTo(userID, msg.Message)
 	}
 }
 
-// todo maybe implement custom checker.
 func (a *Alert) checkEvery24Hours() {
-	now := time.Now()
+	for now := range time.Tick(24 * time.Hour) {
+		log.Debug().Msgf("checking for new f1 calendar events")
 
-	log.Debug().Msgf("checking for new f1 calendar events")
-
-	// avoid unnecessary http calls
-	if now.Weekday() == time.Sunday || now.Weekday() >= time.Thursday {
-		a.prepareNotificationTriggers()
+		// avoid unnecessary http calls
+		if now.Weekday() == time.Sunday || now.Weekday() >= time.Thursday {
+			a.prepareNotificationTriggers()
+		}
 	}
-
-	tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 1, 0, 0, now.Location())
-
-	time.AfterFunc(tomorrow.Sub(now), a.checkEvery24Hours)
 }
