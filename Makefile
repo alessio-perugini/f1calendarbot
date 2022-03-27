@@ -9,7 +9,7 @@ test:
 .PHONY: test
 
 fmt:
-	goimports -w .
+	goimports -w -local github.com/alessio-perugini/f1calendarbot .
 .PHONY: format
 
 lint:
