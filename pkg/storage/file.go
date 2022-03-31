@@ -35,7 +35,7 @@ func (s *FileStorage) DumpSubscribedChats() error {
 }
 
 func (s *FileStorage) LoadSubscribedChats() error {
-	buf, err := os.Open(s.filePath)
+	buf, err := os.OpenFile(s.filePath, os.O_CREATE|os.O_RDONLY, os.ModePerm)
 	if err != nil {
 		return err
 	}

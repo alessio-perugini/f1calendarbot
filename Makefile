@@ -1,7 +1,5 @@
 build:
-	@CGO_ENABLED=0 go build -a -o bin/cmd ./cmd
-	env GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -a -o bin/cmd.exe cmd/main.go
-
+	@CGO_ENABLED=0 go build -a -o bin/app ./cmd
 .PHONY: build
 
 test:

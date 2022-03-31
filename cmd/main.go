@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"runtime/debug"
+	"syscall"
 
 	"github.com/rs/zerolog/log"
 
@@ -27,14 +29,16 @@ func main() {
 	}
 
 	subscriptionService := subscription.NewSubscriptionService()
-	fStorage := storage.NewFileStorage("./subscribedChats.txt", subscriptionService)
+	fStorage := storage.NewFileStorage("/src/subscribed_chats.txt", subscriptionService)
 	if err := fStorage.LoadSubscribedChats(); err != nil {
 		log.Fatal().Err(err).Send()
 	}
 	defer func() {
+		log.Info().Msgf("dumping subscribed chats...")
 		if err := fStorage.DumpSubscribedChats(); err != nil {
 			log.Err(err).Send()
 		}
+		log.Info().Msgf("subscribed chats dumped!")
 	}()
 
 	tb := telegram.NewTelegramRepository(tkn)
@@ -49,12 +53,20 @@ func main() {
 
 	log.Info().Msgf("Server is starting...")
 
+	go alert.New(raceWeekRepo, subscriptionService, tb).Start()
 	go tb.Start()
 
-	alert.New(raceWeekRepo, subscriptionService, tb).Start()
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("livez check passed"))
+	})
+	go func() {
+		if err := http.ListenAndServe(":8080", nil); err != nil {
+			log.Err(err).Send()
+		}
+	}()
 
 	signalCh := make(chan os.Signal, 1)
-	signal.Notify(signalCh, os.Interrupt)
+	signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
 
 	<-signalCh
 	log.Info().Msgf("Server is stopping...")
