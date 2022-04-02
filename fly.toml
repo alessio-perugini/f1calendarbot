@@ -11,6 +11,10 @@ processes = []
   source="f1calendarbot_data"
   destination="/src"
 
+[metrics]
+  port = 9000
+  path = "/metrics"
+
 [experimental]
   allowed_public_ports = []
   auto_rollback = true

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/alessio-perugini/f1calendarbot/pkg/alert"
 	"github.com/alessio-perugini/f1calendarbot/pkg/f1calendar"
+	"github.com/alessio-perugini/f1calendarbot/pkg/metrics"
 	"github.com/alessio-perugini/f1calendarbot/pkg/storage"
 	"github.com/alessio-perugini/f1calendarbot/pkg/subscription"
 	"github.com/alessio-perugini/f1calendarbot/pkg/telegram"
@@ -28,10 +30,24 @@ func main() {
 		log.Fatal().Msgf("no valid telegram token provided")
 	}
 
+	go healthCheckServer()
+
+	metricsServer := metrics.NewServer()
+	go func() {
+		if err := metricsServer.ListenAndServe(":9000"); err != nil {
+			log.Err(err).Send()
+		}
+	}()
+	defer func() {
+		if err := metricsServer.Shutdown(context.Background()); err != nil {
+			log.Err(err).Send()
+		}
+	}()
+
 	subscriptionService := subscription.NewSubscriptionService()
 	fStorage := storage.NewFileStorage("/src/subscribed_chats.txt", subscriptionService)
 	if err := fStorage.LoadSubscribedChats(); err != nil {
-		log.Fatal().Err(err).Send()
+		log.Err(err).Send()
 	}
 	defer func() {
 		log.Info().Msgf("dumping subscribed chats...")
@@ -56,15 +72,6 @@ func main() {
 	go alert.New(raceWeekRepo, subscriptionService, tb).Start()
 	go tb.Start()
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("livez check passed"))
-	})
-	go func() {
-		if err := http.ListenAndServe(":8080", nil); err != nil {
-			log.Err(err).Send()
-		}
-	}()
-
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
 
@@ -72,4 +79,14 @@ func main() {
 	log.Info().Msgf("Server is stopping...")
 
 	tb.Stop()
+}
+
+func healthCheckServer() {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		log.Err(err).Send()
+	}
 }
