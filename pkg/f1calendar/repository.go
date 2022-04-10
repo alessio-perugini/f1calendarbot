@@ -48,7 +48,7 @@ func (c *F1RaceWeekRepository) mapF1CalendarToRaceWeek(calendar *F1Calendar) *Ra
 	now := time.Now()
 
 	for _, race := range calendar.Races {
-		hasSprintRace := race.Sessions.SprintQualifying != nil
+		hasSprintRace := race.Sessions.Sprint != nil
 		timeSessions := c.getSessionsTime(race.Sessions, hasSprintRace)
 
 		if now.After(timeSessions[len(timeSessions)-1]) {
@@ -111,7 +111,7 @@ func (c *F1RaceWeekRepository) getSessionsTime(sessions Sessions, hasSprintRace 
 			mustParseTime(sessions.Fp1),
 			mustParseTime(sessions.Qualifying),
 			mustParseTime(sessions.Fp2),
-			mustParseTime(*sessions.SprintQualifying),
+			mustParseTime(*sessions.Sprint),
 			mustParseTime(sessions.Gp),
 		}
 	}

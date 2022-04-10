@@ -31,10 +31,10 @@ type Race struct {
 }
 
 type Sessions struct {
-	Fp1              string  `json:"fp1"`
-	Fp2              string  `json:"fp2"`
-	Fp3              *string `json:"fp3,omitempty"`
-	Qualifying       string  `json:"qualifying"`
-	Gp               string  `json:"gp"`
-	SprintQualifying *string `json:"sprintQualifying,omitempty"`
+	Fp1        string  `json:"fp1"`
+	Fp2        string  `json:"fp2"`
+	Fp3        *string `json:"fp3,omitempty"`
+	Qualifying string  `json:"qualifying"`
+	Gp         string  `json:"gp"`
+	Sprint     *string `json:"sprint,omitempty"`
 }
