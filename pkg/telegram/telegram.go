@@ -10,7 +10,7 @@ import (
 
 type Repository interface {
 	LoadHandler(endpoint string, handler tb.HandlerFunc)
-	SendMessageTo(chatID int64, message string) error
+	SendMessageTo(chatID int64, message string, opts ...interface{}) error
 	Start()
 	Stop()
 }
@@ -26,7 +26,7 @@ func NewTelegramRepository(
 		Token:  tkn,
 		Poller: &tb.LongPoller{Timeout: 10 * time.Second},
 		OnError: func(err error, c tb.Context) {
-			log.Err(fmt.Errorf("%v err = %w", c.Sender().Recipient(), err))
+			log.Err(fmt.Errorf("%v err = %w", c.Sender().Recipient(), err)).Send()
 		},
 	})
 	if err != nil {
@@ -49,13 +49,13 @@ func (t *telegram) Stop() {
 	t.tBot.Stop()
 }
 
-func (t *telegram) SendMessageTo(chatID int64, message string) error {
+func (t *telegram) SendMessageTo(chatID int64, message string, opts ...interface{}) error {
 	chat, err := t.tBot.ChatByID(chatID)
 	if err != nil {
 		return err
 	}
 
-	_, err = t.tBot.Send(chat, message)
+	_, err = t.tBot.Send(chat, message, opts...)
 
 	return err
 }
