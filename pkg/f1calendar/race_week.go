@@ -21,11 +21,12 @@ type Session struct {
 }
 
 func (r *RaceWeek) String() string {
-	response := fmt.Sprintf("%s \n\n", r.Location)
+	response := fmt.Sprintf("%s \n\n```\n", r.Location)
 
 	for _, v := range r.Sessions {
-		response += fmt.Sprintf("%s: %s\n", v.Name, v.Time.String())
+		response += fmt.Sprintf("%-7s| %s\n", v.Name, v.Time.String())
 	}
+	response += fmt.Sprintf("```")
 
 	return response
 }
