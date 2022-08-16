@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog/log"
@@ -22,8 +23,9 @@ func (s *Server) ListenAndServe(addr string) error {
 	log.Info().Msgf("metrics: listening on %s", addr)
 
 	s.srv = &http.Server{
-		Addr:    addr,
-		Handler: s.handler,
+		Addr:              addr,
+		Handler:           s.handler,
+		ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	if err := s.srv.ListenAndServe(); err != nil {
