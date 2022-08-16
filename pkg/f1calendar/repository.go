@@ -1,7 +1,7 @@
 package f1calendar
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 
@@ -24,7 +24,7 @@ func (c *F1RaceWeekRepository) getF1Calendar() *F1Calendar {
 
 	defer r.Body.Close()
 
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Err(err).Send()
 		return nil
