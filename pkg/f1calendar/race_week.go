@@ -2,6 +2,7 @@ package f1calendar
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -21,7 +22,7 @@ type Session struct {
 }
 
 func (r *RaceWeek) String() string {
-	response := fmt.Sprintf("%s \n\n```\n", r.Location)
+	response := fmt.Sprintf("**%s** \n\n```\n", strings.ReplaceAll(r.Location, "-", "\\-"))
 
 	for _, v := range r.Sessions {
 		response += fmt.Sprintf("%-7s| %s\n", v.Name, v.Time.String())
