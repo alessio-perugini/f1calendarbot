@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/prometheus/client_golang v1.13.0
 	github.com/rs/zerolog v1.27.0
-	gopkg.in/telebot.v3 v3.0.0
+	gopkg.in/telebot.v3 v3.1.2
 )
 
 require (
