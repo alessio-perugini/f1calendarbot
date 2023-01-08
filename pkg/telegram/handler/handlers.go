@@ -40,5 +40,9 @@ func (h *Handler) OnUnsubscribe(c tb.Context) error {
 }
 
 func (h *Handler) OnRaceWeek(c tb.Context) error {
-	return h.bot.SendMessageTo(getChatID(c.Message()), h.raceWeekRepository.GetRaceWeek().String(), tb.ModeMarkdownV2)
+	rw := h.raceWeekRepository.GetRaceWeek()
+	if rw == nil {
+		return h.bot.SendMessageTo(getChatID(c.Message()), "no race available", tb.ModeMarkdownV2)
+	}
+	return h.bot.SendMessageTo(getChatID(c.Message()), rw.String(), tb.ModeMarkdownV2)
 }

@@ -34,9 +34,7 @@ func (s *Subscription) Unsubscribe(id int64) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
-	if _, ok := s.subscribedChats[id]; ok {
-		delete(s.subscribedChats, id)
-	}
+	delete(s.subscribedChats, id)
 }
 
 func (s *Subscription) GetAllSubscribedChats() []int64 {
