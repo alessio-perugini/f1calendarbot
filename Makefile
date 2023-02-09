@@ -1,5 +1,5 @@
 build:
-	@CGO_ENABLED=0 go build -a -o bin/app ./cmd
+	@CGO_ENABLED=0 go build -buildvcs=false -a -o bin/app ./cmd
 .PHONY: build
 
 test:
