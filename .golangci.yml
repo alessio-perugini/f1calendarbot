@@ -1,65 +1,55 @@
 run:
   tests: true
+  build-tags:
+    - integration
+  skip-files:
+    - ".*_gen.go$"
 
 linters:
   enable:
+    - asasalint
     - asciicheck
+    - bidichk
     - bodyclose
-    - deadcode
     - depguard
     - dogsled
-    - dupl
     - durationcheck
     - errcheck
-    - errorlint
-    - exhaustive
     - exportloopref
     - gci
-    - gocognit
+    - gochecknoglobals
+    - gochecknoinits
     - goconst
     - gocritic
-    - gocyclo
-    - godot
     - gofmt
-    - goheader
     - goimports
-    - gomoddirectives
-    - gomodguard
     - gosec
+    - gosimple
     - govet
-    - importas
     - ineffassign
-    - lll
-    - makezero
     - megacheck
     - misspell
     - nakedret
-    - nestif
-    - paralleltest
     - prealloc
-    - predeclared
     - revive
-    - rowserrcheck
-    - sqlclosecheck
     - staticcheck
     - stylecheck
+    - tparallel
     - typecheck
     - unconvert
     - unparam
-    - varcheck
-    - wastedassign
-    - whitespace
-  disable:
-    - gochecknoglobals # disabled since we use a global variable to define the application version
-    - gochecknoinits # disabled since we an init function to configure sentry
-    - golint # deprecated, use revive instead
-    - gosimple # deprecated, use staticcheck instead
-    - interfacer # deprecated, no replacement suggested
-    - unused # deprecated, use staticcheck instead
-    - maligned # deprecated, replaced by govet 'fieldalignment'
-    - scopelint # deprecated, replaced by exportloopref
-    - wsl
-  fast: false
+    - unused
+
+# output configuration options
+output:
+  # colored-line-number|line-number|json|tab|checkstyle|code-climate, default is "colored-line-number"
+  format: colored-line-number
+
+  # print lines of code with issue, default is true
+  print-issued-lines: true
+
+  # print linter name in the end of issue text, default is true
+  print-linter-name: true
 
 linters-settings:
   gofmt:

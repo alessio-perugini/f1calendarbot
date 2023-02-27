@@ -27,7 +27,7 @@ func (r *RaceWeek) String() string {
 	for _, v := range r.Sessions {
 		response += fmt.Sprintf("%-7s| %s\n", v.Name, v.Time.String())
 	}
-	response += fmt.Sprintf("```")
+	response += "```"
 
 	return response
 }

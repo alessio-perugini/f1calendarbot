@@ -37,6 +37,8 @@ func TestSubscription_Subscribe(t *testing.T) {
 }
 
 func TestSubscription_Unsubscribe(t *testing.T) {
+	t.Parallel()
+
 	t.Run("WHEN the given id is subscribed THEN unsubscribe", func(t *testing.T) {
 		t.Parallel()
 		id := int64(1)

@@ -8,6 +8,8 @@ import (
 )
 
 func TestTTLCache_Close(t *testing.T) {
+	t.Parallel()
+
 	c := NewTTLCache[string, string](10 * time.Minute)
 	c.Set("key1", "v", 1*time.Hour)
 	c.Close()
@@ -15,7 +17,10 @@ func TestTTLCache_Close(t *testing.T) {
 	must.MapEmpty(t, c.m)
 }
 
+// nolint:goconst
 func TestTTLCache_Get(t *testing.T) {
+	t.Parallel()
+
 	c := NewTTLCache[string, string](10 * time.Minute)
 	defer c.Close()
 
@@ -27,6 +32,8 @@ func TestTTLCache_Get(t *testing.T) {
 }
 
 func TestTTLCache_Remove(t *testing.T) {
+	t.Parallel()
+
 	c := NewTTLCache[string, string](10 * time.Minute)
 	defer c.Close()
 
@@ -38,6 +45,8 @@ func TestTTLCache_Remove(t *testing.T) {
 }
 
 func TestTTLCache_Set(t *testing.T) {
+	t.Parallel()
+
 	c := NewTTLCache[string, string](10 * time.Minute)
 	defer c.Close()
 
@@ -50,6 +59,8 @@ func TestTTLCache_Set(t *testing.T) {
 }
 
 func TestTTLCache_cleanup(t *testing.T) {
+	t.Parallel()
+
 	c := NewTTLCache[string, string](1 * time.Second)
 	defer c.Close()
 
