@@ -1,4 +1,4 @@
-package alert
+package f1calendar
 
 import (
 	"fmt"
@@ -7,7 +7,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/alessio-perugini/f1calendarbot/pkg/f1calendar"
 	"github.com/alessio-perugini/f1calendarbot/pkg/subscription"
 	"github.com/alessio-perugini/f1calendarbot/pkg/telegram"
 )
@@ -17,7 +16,7 @@ type Interface interface {
 }
 
 type Alert struct {
-	raceWeekRepository  f1calendar.RaceWeekRepository
+	raceWeekRepository  RaceWeekRepository
 	tg                  telegram.Repository
 	subscriptionService subscription.Service
 
@@ -31,7 +30,7 @@ type messageToBeFired struct {
 }
 
 func New(
-	raceWeekRepository f1calendar.RaceWeekRepository,
+	raceWeekRepository RaceWeekRepository,
 	subscriptionService subscription.Service,
 	tg telegram.Repository,
 ) *Alert {

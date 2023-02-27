@@ -12,11 +12,10 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/alessio-perugini/f1calendarbot/pkg/alert"
 	"github.com/alessio-perugini/f1calendarbot/pkg/f1calendar"
 	"github.com/alessio-perugini/f1calendarbot/pkg/metrics"
-	"github.com/alessio-perugini/f1calendarbot/pkg/storage"
 	"github.com/alessio-perugini/f1calendarbot/pkg/subscription"
+	"github.com/alessio-perugini/f1calendarbot/pkg/subscription/store"
 	"github.com/alessio-perugini/f1calendarbot/pkg/telegram"
 	"github.com/alessio-perugini/f1calendarbot/pkg/telegram/handler"
 )
@@ -46,35 +45,34 @@ func main() {
 	}()
 
 	subscriptionService := subscription.NewSubscriptionService()
-	fStorage := storage.NewFileStorage("/src/subscribed_chats.txt", subscriptionService)
-	if err := fStorage.LoadSubscribedChats(); err != nil {
+	fStore := store.NewFile("/src/subscribed_chats.txt", subscriptionService)
+	if err := fStore.LoadSubscribedChats(); err != nil {
 		log.Err(err).Send()
 	}
 	defer func() {
 		log.Info().Msgf("dumping subscribed chats...")
-		if err := fStorage.DumpSubscribedChats(); err != nil {
+		if err := fStore.DumpSubscribedChats(); err != nil {
 			log.Err(err).Send()
 		}
 		log.Info().Msgf("subscribed chats dumped!")
 	}()
 
 	tb := telegram.NewTelegramRepository(tkn)
-	raceWeekRepo := f1calendar.NewRaceWeekRepository()
-	h := handler.NewHandler(tb, subscriptionService, raceWeekRepo)
+	cachedRaceWeekRepo := f1calendar.NewCachedRaceWeek(f1calendar.NewRaceWeekRepository())
+	h := handler.NewHandler(tb, subscriptionService, cachedRaceWeekRepo)
 
 	// load handlers
 	tb.LoadHandler("/subscribe", h.OnSubscribe)
 	tb.LoadHandler("/unsubscribe", h.OnUnsubscribe)
-	// TODO add caching layer
 	tb.LoadHandler("/nextrace", h.OnRaceWeek)
 
 	log.Info().Msgf("Server is starting...")
 
-	go alert.New(raceWeekRepo, subscriptionService, tb).Start()
+	go f1calendar.New(cachedRaceWeekRepo, subscriptionService, tb).Start()
 	go tb.Start()
 
 	signalCh := make(chan os.Signal, 1)
-	signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
+	signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 
 	<-signalCh
 	log.Info().Msgf("Server is stopping...")
