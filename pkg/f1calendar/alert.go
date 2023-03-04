@@ -11,10 +11,6 @@ import (
 	"github.com/alessio-perugini/f1calendarbot/pkg/telegram"
 )
 
-type Interface interface {
-	Start()
-}
-
 type Alert struct {
 	raceWeekRepository  RaceWeekRepository
 	tg                  telegram.Repository
@@ -22,6 +18,7 @@ type Alert struct {
 
 	mutex                sync.RWMutex
 	readyToBeFiredAlerts []messageToBeFired
+	stop                 chan struct{}
 }
 
 type messageToBeFired struct {
@@ -38,6 +35,7 @@ func New(
 		raceWeekRepository:  raceWeekRepository,
 		subscriptionService: subscriptionService,
 		tg:                  tg,
+		stop:                make(chan struct{}),
 	}
 }
 
@@ -109,12 +107,25 @@ func (a *Alert) sendAlert() {
 }
 
 func (a *Alert) checkEvery24Hours() {
-	for now := range time.Tick(24 * time.Hour) {
-		log.Debug().Msgf("checking for new f1 calendar events")
+	ticker := time.NewTicker(24 * time.Hour)
 
-		// avoid unnecessary http calls
-		if now.Weekday() == time.Sunday || now.Weekday() >= time.Thursday {
-			a.prepareNotificationTriggers()
+	for {
+		select {
+		case now := <-ticker.C:
+			log.Debug().Msgf("checking for new f1 calendar events")
+
+			// avoid unnecessary http calls
+			if now.Weekday() == time.Sunday || now.Weekday() >= time.Thursday {
+				a.prepareNotificationTriggers()
+			}
+		case <-a.stop:
+			ticker.Stop()
+			a.clearOldReadyAlerts()
+			return
 		}
 	}
+}
+
+func (a *Alert) Stop() {
+	a.stop <- struct{}{}
 }

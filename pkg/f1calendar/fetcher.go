@@ -8,16 +8,17 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const f1CalendarEndpoint = "https://raw.githubusercontent.com/sportstimes/f1/main/_db/f1/2023.json"
-
-type F1RaceWeekRepository struct{}
-
-func NewRaceWeekRepository() *F1RaceWeekRepository {
-	return &F1RaceWeekRepository{}
+type F1RaceWeekFetcher struct {
+	client      *http.Client
+	endpointURL string
 }
 
-func (c *F1RaceWeekRepository) getF1Calendar() *F1Calendar {
-	r, err := http.Get(f1CalendarEndpoint)
+func NewF1RaceWeekFetcher(endpointURL string) *F1RaceWeekFetcher {
+	return &F1RaceWeekFetcher{client: &http.Client{}, endpointURL: endpointURL}
+}
+
+func (c *F1RaceWeekFetcher) getF1Calendar() *F1Calendar {
+	r, err := c.client.Get(c.endpointURL)
 	if err != nil || r == nil {
 		return nil
 	}
@@ -39,11 +40,11 @@ func (c *F1RaceWeekRepository) getF1Calendar() *F1Calendar {
 	return &calendar
 }
 
-func (c *F1RaceWeekRepository) GetRaceWeek() *RaceWeek {
+func (c *F1RaceWeekFetcher) GetRaceWeek() *RaceWeek {
 	return c.mapF1CalendarToRaceWeek(c.getF1Calendar())
 }
 
-func (c *F1RaceWeekRepository) mapF1CalendarToRaceWeek(calendar *F1Calendar) *RaceWeek {
+func (c *F1RaceWeekFetcher) mapF1CalendarToRaceWeek(calendar *F1Calendar) *RaceWeek {
 	sessions := make([]*Session, 0, 5)
 	now := time.Now()
 
@@ -78,7 +79,7 @@ func (c *F1RaceWeekRepository) mapF1CalendarToRaceWeek(calendar *F1Calendar) *Ra
 	return nil
 }
 
-func (c *F1RaceWeekRepository) getSessionName(nSession int, hasSprintRace bool) string {
+func (c *F1RaceWeekFetcher) getSessionName(nSession int, hasSprintRace bool) string {
 	switch nSession {
 	case 0:
 		return "FP1"
@@ -105,7 +106,7 @@ func (c *F1RaceWeekRepository) getSessionName(nSession int, hasSprintRace bool) 
 	return "GP"
 }
 
-func (c *F1RaceWeekRepository) getSessionsTime(sessions Sessions, hasSprintRace bool) []time.Time {
+func (c *F1RaceWeekFetcher) getSessionsTime(sessions Sessions, hasSprintRace bool) []time.Time {
 	if hasSprintRace {
 		return []time.Time{
 			mustParseTime(sessions.Fp1),

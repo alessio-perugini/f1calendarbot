@@ -19,9 +19,7 @@ type telegram struct {
 	tBot *tb.Bot
 }
 
-func NewTelegramRepository(
-	tkn string,
-) Repository {
+func NewTelegramRepository(tkn string) Repository {
 	tBot, err := tb.NewBot(tb.Settings{
 		Token:  tkn,
 		Poller: &tb.LongPoller{Timeout: 10 * time.Second},

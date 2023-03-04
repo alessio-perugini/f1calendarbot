@@ -20,6 +20,8 @@ import (
 	"github.com/alessio-perugini/f1calendarbot/pkg/telegram/handler"
 )
 
+const f1CalendarEndpoint = "https://raw.githubusercontent.com/sportstimes/f1/main/_db/f1/2023.json"
+
 func main() {
 	if buildInfo, ok := debug.ReadBuildInfo(); ok {
 		fmt.Println("f1calendar", buildInfo.String())
@@ -58,8 +60,8 @@ func main() {
 	}()
 
 	tb := telegram.NewTelegramRepository(tkn)
-	cachedRaceWeekRepo := f1calendar.NewCachedRaceWeek(f1calendar.NewRaceWeekRepository())
-	h := handler.NewHandler(tb, subscriptionService, cachedRaceWeekRepo)
+	cachedRaceWeekFetcher := f1calendar.NewCachedRaceWeek(f1calendar.NewF1RaceWeekFetcher(f1CalendarEndpoint))
+	h := handler.NewHandler(tb, subscriptionService, cachedRaceWeekFetcher)
 
 	// load handlers
 	tb.LoadHandler("/subscribe", h.OnSubscribe)
@@ -68,7 +70,8 @@ func main() {
 
 	log.Info().Msgf("Server is starting...")
 
-	go f1calendar.New(cachedRaceWeekRepo, subscriptionService, tb).Start()
+	alert := f1calendar.New(cachedRaceWeekFetcher, subscriptionService, tb)
+	go alert.Start()
 	go tb.Start()
 
 	signalCh := make(chan os.Signal, 1)
@@ -77,6 +80,7 @@ func main() {
 	<-signalCh
 	log.Info().Msgf("Server is stopping...")
 
+	alert.Stop()
 	tb.Stop()
 }
 
