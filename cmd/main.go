@@ -60,7 +60,7 @@ func main() {
 	}()
 
 	tb := telegram.NewTelegramRepository(tkn)
-	cachedRaceWeekFetcher := f1calendar.NewCachedRaceWeek(f1calendar.NewF1RaceWeekFetcher(f1CalendarEndpoint))
+	cachedRaceWeekFetcher := f1calendar.NewCachedRaceWeek(f1calendar.NewCalendarFetcher(f1CalendarEndpoint))
 	h := handler.NewHandler(tb, subscriptionService, cachedRaceWeekFetcher)
 
 	// load handlers
@@ -70,8 +70,8 @@ func main() {
 
 	log.Info().Msgf("Server is starting...")
 
-	alert := f1calendar.New(cachedRaceWeekFetcher, subscriptionService, tb)
-	go alert.Start()
+	engine := f1calendar.NewEngine(cachedRaceWeekFetcher, f1calendar.NewAlert(tb, subscriptionService))
+	go engine.Start()
 	go tb.Start()
 
 	signalCh := make(chan os.Signal, 1)
@@ -80,7 +80,7 @@ func main() {
 	<-signalCh
 	log.Info().Msgf("Server is stopping...")
 
-	alert.Stop()
+	engine.Stop()
 	tb.Stop()
 }
 

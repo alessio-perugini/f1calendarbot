@@ -1,18 +1,5 @@
 package f1calendar
 
-import "encoding/json"
-
-func UnmarshalF1Calendar(data []byte) (F1Calendar, error) {
-	var r F1Calendar
-	err := json.Unmarshal(data, &r)
-
-	return r, err
-}
-
-func (r F1Calendar) Marshal() ([]byte, error) {
-	return json.Marshal(r)
-}
-
 type F1Calendar struct {
 	Races []Race `json:"races"`
 }

@@ -1,131 +1,83 @@
 package f1calendar
 
 import (
-	"fmt"
-	"sync"
+	"context"
 	"time"
-
-	"github.com/rs/zerolog/log"
 
 	"github.com/alessio-perugini/f1calendarbot/pkg/subscription"
 	"github.com/alessio-perugini/f1calendarbot/pkg/telegram"
 )
 
 type Alert struct {
-	raceWeekRepository  RaceWeekRepository
 	tg                  telegram.Repository
 	subscriptionService subscription.Service
-
-	mutex                sync.RWMutex
-	readyToBeFiredAlerts []messageToBeFired
-	stop                 chan struct{}
+	nextMessage         messageToBeFired
+	messages            chan messageToBeFired
+	stop                chan struct{}
+	stopped             chan struct{}
 }
 
-type messageToBeFired struct {
-	Message string
-	Time    *time.Timer
-}
-
-func New(
-	raceWeekRepository RaceWeekRepository,
-	subscriptionService subscription.Service,
+func NewAlert(
 	tg telegram.Repository,
+	subscriptionService subscription.Service,
 ) *Alert {
 	return &Alert{
-		raceWeekRepository:  raceWeekRepository,
-		subscriptionService: subscriptionService,
 		tg:                  tg,
+		subscriptionService: subscriptionService,
+		messages:            make(chan messageToBeFired),
+		stopped:             make(chan struct{}),
 		stop:                make(chan struct{}),
 	}
 }
 
-func (a *Alert) Start() {
-	a.prepareNotificationTriggers()
-
-	now := time.Now()
-	tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 1, 0, 0, now.Location())
-	time.Sleep(tomorrow.Sub(now))
-
-	a.checkEvery24Hours()
+type messageToBeFired struct {
+	Message string
+	Time    time.Time
 }
 
-func (a *Alert) clearOldReadyAlerts() {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-
-	for _, v := range a.readyToBeFiredAlerts {
-		v.Time.Stop()
-	}
-
-	a.readyToBeFiredAlerts = make([]messageToBeFired, 0, 100)
-}
-
-func (a *Alert) prepareNotificationTriggers() {
-	a.clearOldReadyAlerts()
-
-	now := time.Now()
-	calendar := a.raceWeekRepository.GetRaceWeek()
-
-	if calendar == nil {
-		log.Info().Msgf("No race available")
-		return
-	}
-
-	for _, session := range calendar.Sessions {
-		t10minutes := session.Time.Add(-10 * time.Minute)
-		timer := time.AfterFunc(t10minutes.Sub(now), a.sendAlert)
-
-		a.mutex.Lock()
-		a.readyToBeFiredAlerts = append(a.readyToBeFiredAlerts,
-			messageToBeFired{
-				Message: fmt.Sprintf("%s %s will start in 10 minutes! ", calendar.Location, session.Name),
-				Time:    timer,
-			},
-		)
-		a.mutex.Unlock()
-	}
-
-	log.Info().Msgf("next f1 events is %s ", calendar.Location)
-}
-
-func (a *Alert) sendAlert() {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-
-	if len(a.readyToBeFiredAlerts) == 0 {
-		return
-	}
-
-	var msg messageToBeFired
-	msg, a.readyToBeFiredAlerts = a.readyToBeFiredAlerts[0], a.readyToBeFiredAlerts[1:]
-
-	log.Debug().Msgf(msg.Message)
-
-	for _, userID := range a.subscriptionService.GetAllSubscribedChats() {
-		_ = a.tg.SendMessageTo(userID, msg.Message)
+func (a *Alert) Push(t time.Time, msg string) {
+	a.messages <- messageToBeFired{
+		Message: msg,
+		Time:    t,
 	}
 }
 
-func (a *Alert) checkEvery24Hours() {
-	ticker := time.NewTicker(24 * time.Hour)
+func (a *Alert) Start(ctx context.Context) {
+	var nextMessage messageToBeFired
+	var timer *time.Timer
+
+	defer func() {
+		if timer != nil {
+			timer.Stop()
+		}
+		a.stopped <- struct{}{}
+	}()
 
 	for {
 		select {
-		case now := <-ticker.C:
-			log.Debug().Msgf("checking for new f1 calendar events")
-
-			// avoid unnecessary http calls
-			if now.Weekday() == time.Sunday || now.Weekday() >= time.Thursday {
-				a.prepareNotificationTriggers()
+		case msg := <-a.messages:
+			if nextMessage == msg {
+				continue
 			}
+			nextMessage = msg
+			if timer != nil {
+				timer.Stop()
+			}
+			t := nextMessage.Time.Sub(time.Now())
+			timer = time.AfterFunc(t, func() {
+				for _, userID := range a.subscriptionService.GetAllSubscribedChats() {
+					_ = a.tg.SendMessageTo(userID, msg.Message)
+				}
+			})
 		case <-a.stop:
-			ticker.Stop()
-			a.clearOldReadyAlerts()
+			return
+		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (a *Alert) Stop() {
+func (a *Alert) Shutdown() {
 	a.stop <- struct{}{}
+	<-a.stopped
 }

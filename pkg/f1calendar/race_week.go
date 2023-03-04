@@ -6,17 +6,13 @@ import (
 	"time"
 )
 
-type RaceWeekRepository interface {
-	GetRaceWeek() *RaceWeek
-}
-
 type RaceWeek struct {
 	Location string
 	Round    int
-	Sessions []Session
+	Sessions []SessionToBeDone
 }
 
-type Session struct {
+type SessionToBeDone struct {
 	Name string
 	Time time.Time
 }

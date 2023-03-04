@@ -1,6 +1,7 @@
 package f1calendar
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"time"
@@ -8,16 +9,16 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type F1RaceWeekFetcher struct {
+type CalendarFetcher struct {
 	client      *http.Client
 	endpointURL string
 }
 
-func NewF1RaceWeekFetcher(endpointURL string) *F1RaceWeekFetcher {
-	return &F1RaceWeekFetcher{client: &http.Client{}, endpointURL: endpointURL}
+func NewCalendarFetcher(endpointURL string) *CalendarFetcher {
+	return &CalendarFetcher{client: &http.Client{}, endpointURL: endpointURL}
 }
 
-func (c F1RaceWeekFetcher) getF1Calendar() *F1Calendar {
+func (c CalendarFetcher) getF1Calendar() *F1Calendar {
 	r, err := c.client.Get(c.endpointURL)
 	if err != nil || r == nil {
 		return nil
@@ -31,8 +32,8 @@ func (c F1RaceWeekFetcher) getF1Calendar() *F1Calendar {
 		return nil
 	}
 
-	calendar, err := UnmarshalF1Calendar(body)
-	if err != nil {
+	var calendar F1Calendar
+	if err = json.Unmarshal(body, &calendar); err != nil {
 		log.Err(err).Send()
 		return nil
 	}
@@ -40,12 +41,12 @@ func (c F1RaceWeekFetcher) getF1Calendar() *F1Calendar {
 	return &calendar
 }
 
-func (c F1RaceWeekFetcher) GetRaceWeek() *RaceWeek {
+func (c CalendarFetcher) GetRaceWeek() *RaceWeek {
 	return c.mapF1CalendarToRaceWeek(c.getF1Calendar())
 }
 
-func (c F1RaceWeekFetcher) mapF1CalendarToRaceWeek(calendar *F1Calendar) *RaceWeek {
-	sessions := make([]Session, 0, 5)
+func (c CalendarFetcher) mapF1CalendarToRaceWeek(calendar *F1Calendar) *RaceWeek {
+	sessions := make([]SessionToBeDone, 0, 5)
 	now := time.Now()
 
 	for _, race := range calendar.Races {
@@ -61,7 +62,7 @@ func (c F1RaceWeekFetcher) mapF1CalendarToRaceWeek(calendar *F1Calendar) *RaceWe
 				continue
 			}
 
-			sessions = append(sessions, Session{
+			sessions = append(sessions, SessionToBeDone{
 				Name: c.getSessionName(i, hasSprintRace),
 				Time: t,
 			})
@@ -79,7 +80,7 @@ func (c F1RaceWeekFetcher) mapF1CalendarToRaceWeek(calendar *F1Calendar) *RaceWe
 	return nil
 }
 
-func (c F1RaceWeekFetcher) getSessionName(nSession int, hasSprintRace bool) string {
+func (c CalendarFetcher) getSessionName(nSession int, hasSprintRace bool) string {
 	switch nSession {
 	case 0:
 		return "FP1"
@@ -106,7 +107,7 @@ func (c F1RaceWeekFetcher) getSessionName(nSession int, hasSprintRace bool) stri
 	return "GP"
 }
 
-func (c F1RaceWeekFetcher) getSessionsTime(sessions Sessions, hasSprintRace bool) []time.Time {
+func (c CalendarFetcher) getSessionsTime(sessions Sessions, hasSprintRace bool) []time.Time {
 	if hasSprintRace {
 		return []time.Time{
 			mustParseTime(sessions.Fp1),
