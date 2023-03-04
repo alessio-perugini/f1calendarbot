@@ -125,3 +125,12 @@ func (c F1RaceWeekFetcher) getSessionsTime(sessions Sessions, hasSprintRace bool
 		mustParseTime(sessions.Gp),
 	}
 }
+
+func mustParseTime(t string) time.Time {
+	result, err := time.Parse(time.RFC3339, t)
+	if err != nil {
+		log.Fatal().Msgf("Unable to parse fp1 datetime %v", err)
+	}
+
+	return result.In(time.Local)
+}
