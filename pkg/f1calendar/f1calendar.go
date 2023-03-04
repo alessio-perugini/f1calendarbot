@@ -9,7 +9,7 @@ func UnmarshalF1Calendar(data []byte) (F1Calendar, error) {
 	return r, err
 }
 
-func (r *F1Calendar) Marshal() ([]byte, error) {
+func (r F1Calendar) Marshal() ([]byte, error) {
 	return json.Marshal(r)
 }
 

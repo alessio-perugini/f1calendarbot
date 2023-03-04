@@ -13,7 +13,7 @@ type RaceWeekRepository interface {
 type RaceWeek struct {
 	Location string
 	Round    int
-	Sessions []*Session
+	Sessions []Session
 }
 
 type Session struct {
@@ -21,7 +21,7 @@ type Session struct {
 	Time time.Time
 }
 
-func (r *RaceWeek) String() string {
+func (r RaceWeek) String() string {
 	response := fmt.Sprintf("**%s** \n\n```\n", strings.ReplaceAll(r.Location, "-", "\\-"))
 
 	for _, v := range r.Sessions {

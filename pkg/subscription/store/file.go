@@ -21,7 +21,7 @@ func NewFile(filePath string, subscriptionService subscription.Service) *File {
 	}
 }
 
-func (s *File) DumpSubscribedChats() error {
+func (s File) DumpSubscribedChats() error {
 	var dataToWrite []byte
 
 	for _, v := range s.subscriptionService.GetAllSubscribedChats() {
@@ -31,7 +31,7 @@ func (s *File) DumpSubscribedChats() error {
 	return os.WriteFile(s.filePath, dataToWrite, os.ModePerm)
 }
 
-func (s *File) LoadSubscribedChats() error {
+func (s File) LoadSubscribedChats() error {
 	buf, err := os.OpenFile(s.filePath, os.O_CREATE|os.O_RDONLY, os.ModePerm)
 	if err != nil {
 		return err

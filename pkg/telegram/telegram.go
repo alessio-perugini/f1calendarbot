@@ -35,19 +35,19 @@ func NewTelegramRepository(tkn string) Repository {
 	return &telegram{tBot: tBot}
 }
 
-func (t *telegram) LoadHandler(endpoint string, handler tb.HandlerFunc) {
+func (t telegram) LoadHandler(endpoint string, handler tb.HandlerFunc) {
 	t.tBot.Handle(endpoint, handler)
 }
 
-func (t *telegram) Start() {
+func (t telegram) Start() {
 	t.tBot.Start()
 }
 
-func (t *telegram) Stop() {
+func (t telegram) Stop() {
 	t.tBot.Stop()
 }
 
-func (t *telegram) SendMessageTo(chatID int64, message string, opts ...interface{}) error {
+func (t telegram) SendMessageTo(chatID int64, message string, opts ...interface{}) error {
 	chat, err := t.tBot.ChatByID(chatID)
 	if err != nil {
 		return err

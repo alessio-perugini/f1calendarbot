@@ -26,23 +26,31 @@ func NewHandler(
 	}
 }
 
-func (h *Handler) OnSubscribe(c tb.Context) error {
+func (h Handler) OnSubscribe(c tb.Context) error {
 	chatID := getChatID(c.Message())
 	h.subscriptionService.Subscribe(chatID)
 
 	return h.bot.SendMessageTo(chatID, "You have been subscribed successfully!")
 }
 
-func (h *Handler) OnUnsubscribe(c tb.Context) error {
+func (h Handler) OnUnsubscribe(c tb.Context) error {
 	chatID := getChatID(c.Message())
 	h.subscriptionService.Unsubscribe(chatID)
 	return h.bot.SendMessageTo(chatID, "You have been un-subscribed successfully!")
 }
 
-func (h *Handler) OnRaceWeek(c tb.Context) error {
+func (h Handler) OnRaceWeek(c tb.Context) error {
 	rw := h.raceWeekRepository.GetRaceWeek()
 	if rw == nil {
 		return h.bot.SendMessageTo(getChatID(c.Message()), "no race available", tb.ModeMarkdownV2)
 	}
 	return h.bot.SendMessageTo(getChatID(c.Message()), rw.String(), tb.ModeMarkdownV2)
+}
+
+func getChatID(m *tb.Message) int64 {
+	if !m.Private() {
+		return m.Chat.ID
+	}
+
+	return m.Sender.ID
 }
