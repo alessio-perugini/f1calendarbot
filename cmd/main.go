@@ -27,7 +27,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer logger.Sync()
+	defer func() {
+		_ = logger.Sync()
+	}()
 
 	if buildInfo, ok := debug.ReadBuildInfo(); ok {
 		logger.Info("f1calendar ", zap.String("buildinfo", buildInfo.String()))

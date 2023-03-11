@@ -1,9 +1,9 @@
 package telegram
 
 import (
-	"go.uber.org/zap"
 	"time"
 
+	"go.uber.org/zap"
 	tb "gopkg.in/telebot.v3"
 )
 
@@ -31,7 +31,7 @@ func NewTelegramRepository(tkn string, logger *zap.Logger) (Repository, error) {
 		return nil, err
 	}
 
-	return &telegram{tBot: tBot}, nil
+	return &telegram{tBot: tBot, logger: logger}, nil
 }
 
 func (t telegram) LoadHandler(endpoint string, handler tb.HandlerFunc) {

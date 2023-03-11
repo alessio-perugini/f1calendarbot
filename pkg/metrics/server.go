@@ -3,11 +3,11 @@ package metrics
 import (
 	"context"
 	"errors"
-	"go.uber.org/zap"
 	"net/http"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/zap"
 )
 
 var (

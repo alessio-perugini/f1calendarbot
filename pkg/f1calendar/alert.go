@@ -59,8 +59,7 @@ func (a *Alert) Start(ctx context.Context) {
 			if timer != nil {
 				timer.Stop()
 			}
-			t := nextMessage.Time.Sub(time.Now())
-			timer = time.AfterFunc(t, func() {
+			timer = time.AfterFunc(time.Until(nextMessage.Time), func() {
 				for _, userID := range a.subscriptionService.GetAllSubscribedChats() {
 					_ = a.tg.SendMessageTo(userID, msg.Message)
 				}
