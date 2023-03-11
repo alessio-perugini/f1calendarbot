@@ -3,11 +3,11 @@ package metrics
 import (
 	"context"
 	"errors"
+	"go.uber.org/zap"
 	"net/http"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -17,10 +17,11 @@ var (
 type Server struct {
 	srv     *http.Server
 	handler http.Handler
+	logger  *zap.Logger
 }
 
 func (s *Server) ListenAndServe(addr string) error {
-	log.Info().Msgf("metrics: listening on %s", addr)
+	s.logger.Info("metrics: listening on %s")
 
 	s.srv = &http.Server{
 		Addr:              addr,
@@ -51,9 +52,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return s.srv.Shutdown(ctx)
 }
 
-func NewServer() *Server {
+func NewServer(logger *zap.Logger) *Server {
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", promhttp.Handler())
 
-	return &Server{handler: mux}
+	return &Server{handler: mux, logger: logger}
 }

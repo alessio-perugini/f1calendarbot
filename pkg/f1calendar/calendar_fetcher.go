@@ -2,20 +2,22 @@ package f1calendar
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
 
-	"github.com/rs/zerolog/log"
+	"go.uber.org/zap"
 )
 
 type CalendarFetcher struct {
 	client      *http.Client
 	endpointURL string
+	logger      *zap.Logger
 }
 
-func NewCalendarFetcher(endpointURL string) *CalendarFetcher {
-	return &CalendarFetcher{client: &http.Client{}, endpointURL: endpointURL}
+func NewCalendarFetcher(endpointURL string, logger *zap.Logger) *CalendarFetcher {
+	return &CalendarFetcher{client: &http.Client{}, endpointURL: endpointURL, logger: logger}
 }
 
 func (c CalendarFetcher) getF1Calendar() *F1Calendar {
@@ -28,13 +30,13 @@ func (c CalendarFetcher) getF1Calendar() *F1Calendar {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		log.Err(err).Send()
+		c.logger.Error(err.Error())
 		return nil
 	}
 
 	var calendar F1Calendar
 	if err = json.Unmarshal(body, &calendar); err != nil {
-		log.Err(err).Send()
+		c.logger.Error(err.Error())
 		return nil
 	}
 
@@ -130,7 +132,7 @@ func (c CalendarFetcher) getSessionsTime(sessions Sessions, hasSprintRace bool) 
 func mustParseTime(t string) time.Time {
 	result, err := time.Parse(time.RFC3339, t)
 	if err != nil {
-		log.Fatal().Msgf("Unable to parse fp1 datetime %v", err)
+		panic(fmt.Errorf("unable to parse fp1 datetime %v", err))
 	}
 
 	return result.In(time.Local)

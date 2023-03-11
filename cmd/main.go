@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net/http"
 	"os"
 	"os/signal"
@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/rs/zerolog/log"
+	"go.uber.org/zap"
 
 	"github.com/alessio-perugini/f1calendarbot/pkg/f1calendar"
 	"github.com/alessio-perugini/f1calendarbot/pkg/metrics"
@@ -23,44 +23,63 @@ import (
 const f1CalendarEndpoint = "https://raw.githubusercontent.com/sportstimes/f1/main/_db/f1/2023.json"
 
 func main() {
+	logger, err := zap.NewProduction()
+	if err != nil {
+		panic(err)
+	}
+	defer logger.Sync()
+
 	if buildInfo, ok := debug.ReadBuildInfo(); ok {
-		fmt.Println("f1calendar", buildInfo.String())
+		logger.Info("f1calendar ", zap.String("buildinfo", buildInfo.String()))
 	}
 
 	tkn := os.Getenv("F1CALENDAR__TELEGRAM_TOKEN")
 	if tkn == "" {
-		log.Fatal().Msgf("no valid telegram token provided")
+		logger.Fatal("no valid telegram token provided")
 	}
 
-	go healthCheckServer()
-
-	metricsServer := metrics.NewServer()
+	healthServer := healthCheckServer()
 	go func() {
-		if err := metricsServer.ListenAndServe(":9000"); err != nil {
-			log.Err(err).Send()
+		if err := healthServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Error(err.Error())
+		}
+	}()
+	defer func() {
+		if err := healthServer.Shutdown(context.Background()); err != nil {
+			logger.Error(err.Error())
+		}
+	}()
+
+	metricsServer := metrics.NewServer(logger)
+	go func() {
+		if err := metricsServer.ListenAndServe(":9000"); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Error(err.Error())
 		}
 	}()
 	defer func() {
 		if err := metricsServer.Shutdown(context.Background()); err != nil {
-			log.Err(err).Send()
+			logger.Error(err.Error())
 		}
 	}()
 
 	subscriptionService := subscription.NewSubscriptionService()
 	fStore := store.NewFile("/src/subscribed_chats.txt", subscriptionService)
 	if err := fStore.LoadSubscribedChats(); err != nil {
-		log.Err(err).Send()
+		logger.Error(err.Error())
 	}
 	defer func() {
-		log.Info().Msgf("dumping subscribed chats...")
+		logger.Info("dumping subscribed chats...")
 		if err := fStore.DumpSubscribedChats(); err != nil {
-			log.Err(err).Send()
+			logger.Error(err.Error())
 		}
-		log.Info().Msgf("subscribed chats dumped!")
+		logger.Info("subscribed chats dumped!")
 	}()
 
-	tb := telegram.NewTelegramRepository(tkn)
-	cachedRaceWeekFetcher := f1calendar.NewCachedRaceWeek(f1calendar.NewCalendarFetcher(f1CalendarEndpoint))
+	tb, err := telegram.NewTelegramRepository(tkn, logger)
+	if err != nil {
+		logger.Fatal(err.Error())
+	}
+	cachedRaceWeekFetcher := f1calendar.NewCachedRaceWeek(f1calendar.NewCalendarFetcher(f1CalendarEndpoint, logger))
 	h := handler.NewHandler(tb, subscriptionService, cachedRaceWeekFetcher)
 
 	// load handlers
@@ -68,9 +87,9 @@ func main() {
 	tb.LoadHandler("/unsubscribe", h.OnUnsubscribe)
 	tb.LoadHandler("/nextrace", h.OnRaceWeek)
 
-	log.Info().Msgf("Server is starting...")
+	logger.Info("Server is starting...")
 
-	engine := f1calendar.NewEngine(cachedRaceWeekFetcher, f1calendar.NewAlert(tb, subscriptionService))
+	engine := f1calendar.NewEngine(cachedRaceWeekFetcher, f1calendar.NewAlert(tb, subscriptionService), logger)
 	go engine.Start()
 	go tb.Start()
 
@@ -78,24 +97,20 @@ func main() {
 	signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 
 	<-signalCh
-	log.Info().Msgf("Server is stopping...")
+	logger.Info("Server is stopping...")
 
 	engine.Stop()
 	tb.Stop()
 }
 
-func healthCheckServer() {
+func healthCheckServer() *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 
-	srv := http.Server{
+	return &http.Server{
 		Addr:              ":8080",
 		Handler:           mux,
 		ReadTimeout:       10 * time.Second,
 		ReadHeaderTimeout: 10 * time.Second,
-	}
-
-	if err := srv.ListenAndServe(); err != nil {
-		log.Err(err).Send()
 	}
 }
