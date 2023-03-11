@@ -11,16 +11,12 @@ import (
 type Alert struct {
 	tg                  telegram.Repository
 	subscriptionService subscription.Service
-	nextMessage         messageToBeFired
 	messages            chan messageToBeFired
 	stop                chan struct{}
 	stopped             chan struct{}
 }
 
-func NewAlert(
-	tg telegram.Repository,
-	subscriptionService subscription.Service,
-) *Alert {
+func NewAlert(tg telegram.Repository, subscriptionService subscription.Service) *Alert {
 	return &Alert{
 		tg:                  tg,
 		subscriptionService: subscriptionService,
