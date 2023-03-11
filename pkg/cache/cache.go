@@ -23,7 +23,7 @@ func NewTTLCache[K comparable, T any](cleanupInterval time.Duration) *TTLCache[K
 
 	// cleanup func
 	go func() {
-		ticker := time.NewTimer(cleanupInterval)
+		ticker := time.NewTicker(cleanupInterval)
 		defer ticker.Stop()
 
 		for {
