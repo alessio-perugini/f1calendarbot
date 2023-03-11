@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/prometheus/client_golang v1.14.0
-	github.com/shoenig/test v0.6.1
+	github.com/shoenig/test v0.6.2
 	go.uber.org/zap v1.24.0
 	gopkg.in/telebot.v3 v3.1.3
 )
