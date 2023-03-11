@@ -1,10 +1,9 @@
 package telegram
 
 import (
-	"fmt"
 	"time"
 
-	"github.com/rs/zerolog/log"
+	"go.uber.org/zap"
 	tb "gopkg.in/telebot.v3"
 )
 
@@ -16,23 +15,23 @@ type Repository interface {
 }
 
 type telegram struct {
-	tBot *tb.Bot
+	tBot   *tb.Bot
+	logger *zap.Logger
 }
 
-func NewTelegramRepository(tkn string) Repository {
+func NewTelegramRepository(tkn string, logger *zap.Logger) (Repository, error) {
 	tBot, err := tb.NewBot(tb.Settings{
 		Token:  tkn,
 		Poller: &tb.LongPoller{Timeout: 10 * time.Second},
 		OnError: func(err error, c tb.Context) {
-			log.Err(fmt.Errorf("%v err = %w", c.Sender().Recipient(), err)).Send()
+			logger.Error(err.Error(), zap.String("sender", c.Sender().Recipient()))
 		},
 	})
 	if err != nil {
-		log.Err(err).Send()
-		return nil
+		return nil, err
 	}
 
-	return &telegram{tBot: tBot}
+	return &telegram{tBot: tBot, logger: logger}, nil
 }
 
 func (t telegram) LoadHandler(endpoint string, handler tb.HandlerFunc) {

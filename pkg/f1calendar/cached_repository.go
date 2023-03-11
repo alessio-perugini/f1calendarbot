@@ -6,6 +6,10 @@ import (
 	"github.com/alessio-perugini/f1calendarbot/pkg/cache"
 )
 
+type RaceWeekRepository interface {
+	GetRaceWeek() *RaceWeek
+}
+
 type CachedRaceWeek struct {
 	cache cache.Interface[string, *RaceWeek]
 	RaceWeekRepository

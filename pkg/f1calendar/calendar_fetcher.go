@@ -1,23 +1,26 @@
 package f1calendar
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"time"
 
-	"github.com/rs/zerolog/log"
+	"go.uber.org/zap"
 )
 
-type F1RaceWeekFetcher struct {
+type CalendarFetcher struct {
 	client      *http.Client
 	endpointURL string
+	logger      *zap.Logger
 }
 
-func NewF1RaceWeekFetcher(endpointURL string) *F1RaceWeekFetcher {
-	return &F1RaceWeekFetcher{client: &http.Client{}, endpointURL: endpointURL}
+func NewCalendarFetcher(endpointURL string, logger *zap.Logger) *CalendarFetcher {
+	return &CalendarFetcher{client: &http.Client{}, endpointURL: endpointURL, logger: logger}
 }
 
-func (c F1RaceWeekFetcher) getF1Calendar() *F1Calendar {
+func (c CalendarFetcher) getF1Calendar() *F1Calendar {
 	r, err := c.client.Get(c.endpointURL)
 	if err != nil || r == nil {
 		return nil
@@ -27,25 +30,25 @@ func (c F1RaceWeekFetcher) getF1Calendar() *F1Calendar {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		log.Err(err).Send()
+		c.logger.Error(err.Error())
 		return nil
 	}
 
-	calendar, err := UnmarshalF1Calendar(body)
-	if err != nil {
-		log.Err(err).Send()
+	var calendar F1Calendar
+	if err = json.Unmarshal(body, &calendar); err != nil {
+		c.logger.Error(err.Error())
 		return nil
 	}
 
 	return &calendar
 }
 
-func (c F1RaceWeekFetcher) GetRaceWeek() *RaceWeek {
+func (c CalendarFetcher) GetRaceWeek() *RaceWeek {
 	return c.mapF1CalendarToRaceWeek(c.getF1Calendar())
 }
 
-func (c F1RaceWeekFetcher) mapF1CalendarToRaceWeek(calendar *F1Calendar) *RaceWeek {
-	sessions := make([]Session, 0, 5)
+func (c CalendarFetcher) mapF1CalendarToRaceWeek(calendar *F1Calendar) *RaceWeek {
+	sessions := make([]SessionToBeDone, 0, 5)
 	now := time.Now()
 
 	for _, race := range calendar.Races {
@@ -61,7 +64,7 @@ func (c F1RaceWeekFetcher) mapF1CalendarToRaceWeek(calendar *F1Calendar) *RaceWe
 				continue
 			}
 
-			sessions = append(sessions, Session{
+			sessions = append(sessions, SessionToBeDone{
 				Name: c.getSessionName(i, hasSprintRace),
 				Time: t,
 			})
@@ -79,7 +82,7 @@ func (c F1RaceWeekFetcher) mapF1CalendarToRaceWeek(calendar *F1Calendar) *RaceWe
 	return nil
 }
 
-func (c F1RaceWeekFetcher) getSessionName(nSession int, hasSprintRace bool) string {
+func (c CalendarFetcher) getSessionName(nSession int, hasSprintRace bool) string {
 	switch nSession {
 	case 0:
 		return "FP1"
@@ -106,7 +109,7 @@ func (c F1RaceWeekFetcher) getSessionName(nSession int, hasSprintRace bool) stri
 	return "GP"
 }
 
-func (c F1RaceWeekFetcher) getSessionsTime(sessions Sessions, hasSprintRace bool) []time.Time {
+func (c CalendarFetcher) getSessionsTime(sessions Sessions, hasSprintRace bool) []time.Time {
 	if hasSprintRace {
 		return []time.Time{
 			mustParseTime(sessions.Fp1),
@@ -129,7 +132,7 @@ func (c F1RaceWeekFetcher) getSessionsTime(sessions Sessions, hasSprintRace bool
 func mustParseTime(t string) time.Time {
 	result, err := time.Parse(time.RFC3339, t)
 	if err != nil {
-		log.Fatal().Msgf("Unable to parse fp1 datetime %v", err)
+		panic(fmt.Errorf("unable to parse fp1 datetime %v", err))
 	}
 
 	return result.In(time.Local)
