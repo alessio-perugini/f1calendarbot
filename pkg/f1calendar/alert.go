@@ -8,21 +8,29 @@ import (
 	"github.com/alessio-perugini/f1calendarbot/pkg/telegram"
 )
 
-type Alert struct {
-	tg                  telegram.Repository
-	subscriptionService subscription.Service
-	messages            chan messageToBeFired
-	stop                chan struct{}
-	stopped             chan struct{}
+type AlertFn func(msg string)
+
+func SendTelegramAlert(tg telegram.Repository, subscriptionService subscription.Service) AlertFn {
+	return func(msg string) {
+		for _, userID := range subscriptionService.GetAllSubscribedChats() {
+			_ = tg.SendMessageTo(userID, msg)
+		}
+	}
 }
 
-func NewAlert(tg telegram.Repository, subscriptionService subscription.Service) *Alert {
+type Alert struct {
+	fn       AlertFn
+	messages chan messageToBeFired
+	stop     chan struct{}
+	stopped  chan struct{}
+}
+
+func NewAlert(fn AlertFn) *Alert {
 	return &Alert{
-		tg:                  tg,
-		subscriptionService: subscriptionService,
-		messages:            make(chan messageToBeFired),
-		stopped:             make(chan struct{}),
-		stop:                make(chan struct{}),
+		fn:       fn,
+		messages: make(chan messageToBeFired),
+		stopped:  make(chan struct{}),
+		stop:     make(chan struct{}),
 	}
 }
 
@@ -59,11 +67,7 @@ func (a *Alert) Start(ctx context.Context) {
 			if timer != nil {
 				timer.Stop()
 			}
-			timer = time.AfterFunc(time.Until(nextMessage.Time), func() {
-				for _, userID := range a.subscriptionService.GetAllSubscribedChats() {
-					_ = a.tg.SendMessageTo(userID, msg.Message)
-				}
-			})
+			timer = time.AfterFunc(time.Until(nextMessage.Time), func() { a.fn(msg.Message) })
 		case <-a.stop:
 			return
 		case <-ctx.Done():
