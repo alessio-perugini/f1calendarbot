@@ -91,7 +91,11 @@ func main() {
 
 	logger.Info("Server is starting...")
 
-	engine := f1calendar.NewEngine(cachedRaceWeekFetcher, f1calendar.NewAlert(tb, subscriptionService), logger)
+	engine := f1calendar.NewEngine(
+		cachedRaceWeekFetcher,
+		f1calendar.NewAlert(f1calendar.SendTelegramAlert(tb, subscriptionService)),
+		logger,
+	)
 	go engine.Start()
 	go tb.Start()
 
