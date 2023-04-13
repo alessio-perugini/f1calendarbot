@@ -29,11 +29,7 @@ func (s *Server) ListenAndServe(addr string) error {
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
-	if err := s.srv.ListenAndServe(); err != nil {
-		return err
-	}
-
-	return nil
+	return s.srv.ListenAndServe()
 }
 
 func (s *Server) Close() error {
