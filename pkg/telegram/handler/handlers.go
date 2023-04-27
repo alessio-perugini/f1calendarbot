@@ -42,9 +42,9 @@ func (h Handler) OnUnsubscribe(c tb.Context) error {
 func (h Handler) OnRaceWeek(c tb.Context) error {
 	rw := h.raceWeekRepository.GetRaceWeek()
 	if rw == nil {
-		return h.bot.SendMessageTo(getChatID(c.Message()), "no race available", tb.ModeMarkdownV2)
+		return h.bot.SendMessageTo(getChatID(c.Message()), "no race available", tb.ModeHTML)
 	}
-	return h.bot.SendMessageTo(getChatID(c.Message()), rw.String(), tb.ModeMarkdownV2)
+	return h.bot.SendMessageTo(getChatID(c.Message()), rw.String(), tb.ModeHTML)
 }
 
 func getChatID(m *tb.Message) int64 {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"time"
 
 	"go.uber.org/zap"
@@ -48,28 +49,8 @@ func (c CalendarFetcher) GetRaceWeek() *RaceWeek {
 }
 
 func (c CalendarFetcher) mapF1CalendarToRaceWeek(calendar *F1Calendar) *RaceWeek {
-	sessions := make([]SessionToBeDone, 0, 5)
-	now := time.Now()
-
 	for _, race := range calendar.Races {
-		hasSprintRace := race.Sessions.Sprint != nil
-		timeSessions := c.getSessionsTime(race.Sessions, hasSprintRace)
-
-		if now.After(timeSessions[len(timeSessions)-1]) {
-			continue
-		}
-
-		for i, t := range timeSessions {
-			if now.After(t) {
-				continue
-			}
-
-			sessions = append(sessions, SessionToBeDone{
-				Name: c.getSessionName(i, hasSprintRace),
-				Time: t,
-			})
-		}
-
+		sessions := c.raceSessions(race.Sessions)
 		if len(sessions) > 0 {
 			return &RaceWeek{
 				Location: race.Location,
@@ -78,55 +59,25 @@ func (c CalendarFetcher) mapF1CalendarToRaceWeek(calendar *F1Calendar) *RaceWeek
 			}
 		}
 	}
-
 	return nil
 }
 
-func (c CalendarFetcher) getSessionName(nSession int, hasSprintRace bool) string {
-	switch nSession {
-	case 0:
-		return "FP1"
-	case 1:
-		if hasSprintRace {
-			return "QUALI"
-		}
+func (c CalendarFetcher) raceSessions(raceSessions Sessions) []SessionToBeDone {
+	now := time.Now()
+	sessions := make([]SessionToBeDone, 0, 5)
 
-		return "FP2"
-	case 2:
-		if hasSprintRace {
-			return "FP2"
-		}
-
-		return "FP3"
-	case 3:
-		if hasSprintRace {
-			return "SPRINT"
-		}
-
-		return "QUALI"
-	}
-
-	return "GP"
-}
-
-func (c CalendarFetcher) getSessionsTime(sessions Sessions, hasSprintRace bool) []time.Time {
-	if hasSprintRace {
-		return []time.Time{
-			mustParseTime(sessions.Fp1),
-			mustParseTime(sessions.Qualifying),
-			mustParseTime(sessions.Fp2),
-			mustParseTime(*sessions.Sprint),
-			mustParseTime(sessions.Gp),
+	for k, v := range raceSessions {
+		session := SessionToBeDone{Name: k, Time: mustParseTime(v)}
+		if now.Before(session.Time) {
+			sessions = append(sessions, session)
 		}
 	}
 
-	return []time.Time{
-		mustParseTime(sessions.Fp1),
-		mustParseTime(sessions.Fp2),
-		mustParseTime(*sessions.Fp3),
-		mustParseTime(sessions.Qualifying),
-		mustParseTime(sessions.Gp),
-	}
+	sort.SliceStable(sessions, func(i, j int) bool {
+		return sessions[i].Time.Before(sessions[j].Time)
+	})
+
+	return sessions
 }
 
 func mustParseTime(t string) time.Time {

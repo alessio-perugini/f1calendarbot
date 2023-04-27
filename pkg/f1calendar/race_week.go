@@ -2,8 +2,10 @@ package f1calendar
 
 import (
 	"fmt"
-	"strings"
 	"time"
+
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 )
 
 type RaceWeek struct {
@@ -18,12 +20,16 @@ type SessionToBeDone struct {
 }
 
 func (r RaceWeek) String() string {
-	response := fmt.Sprintf("**%s** \n\n```\n", strings.ReplaceAll(r.Location, "-", "\\-"))
+	tw := table.NewWriter()
+	tw.AppendHeader(table.Row{"Session", "Time"})
+	tw.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
+		{Number: 2, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
+	})
 
 	for _, v := range r.Sessions {
-		response += fmt.Sprintf("%-7s| %s\n", v.Name, v.Time.String())
+		tw.AppendRow(table.Row{v.Name, v.Time})
 	}
-	response += "```"
 
-	return response
+	return fmt.Sprintf("<pre>%s</pre>", tw.Render())
 }
