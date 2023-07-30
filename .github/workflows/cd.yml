@@ -15,7 +15,6 @@ jobs:
       - uses: golangci/golangci-lint-action@v3.6.0
 
   test:
-    needs: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
