@@ -29,6 +29,12 @@ func (r RaceWeek) String() string {
 	})
 
 	for _, v := range r.Sessions {
+		switch v.Name {
+		case "qualifying":
+			v.Name = "ql"
+		case "sprintQualifying":
+			v.Name = "sql"
+		}
 		tw.AppendRow(table.Row{v.Name, v.Time.Format("2006-01-02 15:04:05")})
 	}
 
