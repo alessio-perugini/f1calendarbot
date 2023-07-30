@@ -21,7 +21,7 @@ type SessionToBeDone struct {
 
 func (r RaceWeek) String() string {
 	tw := table.NewWriter()
-	tw.SetTitle(r.Location)
+	tw.SetTitle(r.Location + " (TZ: UTC+2)")
 	tw.AppendHeader(table.Row{"Session", "Time"})
 	tw.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
@@ -29,7 +29,7 @@ func (r RaceWeek) String() string {
 	})
 
 	for _, v := range r.Sessions {
-		tw.AppendRow(table.Row{v.Name, v.Time})
+		tw.AppendRow(table.Row{v.Name, v.Time.Format("2006-01-02 15:04:05")})
 	}
 
 	return fmt.Sprintf("<pre>%s</pre>", tw.Render())
