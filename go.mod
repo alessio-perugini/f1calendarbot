@@ -6,7 +6,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.4.6
 	github.com/prometheus/client_golang v1.16.0
 	github.com/shoenig/test v0.6.6
-	go.uber.org/zap v1.24.0
+	go.uber.org/zap v1.26.0
 	gopkg.in/telebot.v3 v3.1.3
 )
 
@@ -21,7 +21,6 @@ require (
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/procfs v0.10.1 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
-	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
