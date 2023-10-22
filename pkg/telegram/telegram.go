@@ -3,6 +3,7 @@ package telegram
 import (
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 	tb "gopkg.in/telebot.v3"
 )
@@ -19,7 +20,18 @@ type telegram struct {
 	logger *zap.Logger
 }
 
+var (
+	requestDurationSummary = prometheus.NewSummaryVec(
+		prometheus.SummaryOpts{
+			Namespace:  "telegram",
+			Name:       "bot_request_duration_milliseconds",
+			Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+		}, []string{"endpoint"},
+	)
+)
+
 func NewTelegramRepository(tkn string, logger *zap.Logger) (Repository, error) {
+	prometheus.MustRegister(requestDurationSummary)
 	tBot, err := tb.NewBot(tb.Settings{
 		Token:  tkn,
 		Poller: &tb.LongPoller{Timeout: 10 * time.Second},
@@ -35,7 +47,14 @@ func NewTelegramRepository(tkn string, logger *zap.Logger) (Repository, error) {
 }
 
 func (t telegram) LoadHandler(endpoint string, handler tb.HandlerFunc) {
-	t.tBot.Handle(endpoint, handler)
+	t.tBot.Handle(endpoint, handler, func(hf tb.HandlerFunc) tb.HandlerFunc {
+		return func(ctx tb.Context) error {
+			defer func(start time.Time) {
+				requestDurationSummary.WithLabelValues(endpoint).Observe(float64(time.Since(start).Milliseconds()))
+			}(time.Now())
+			return handler(ctx)
+		}
+	})
 }
 
 func (t telegram) Start() {
