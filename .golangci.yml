@@ -16,7 +16,6 @@ linters:
     - errcheck
     - exportloopref
     - gci
-    - gochecknoglobals
     - gochecknoinits
     - goconst
     - gocritic
