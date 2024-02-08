@@ -74,7 +74,7 @@ func TestSubscription_GetAllSubscribedChats(t *testing.T) {
 	}{
 		{
 			name:     "WHEN no one subscribed THEN return empty slice",
-			fixtures: func(s *subscription.Subscription) {},
+			fixtures: func(_ *subscription.Subscription) {},
 			want:     []int64{},
 		},
 		{

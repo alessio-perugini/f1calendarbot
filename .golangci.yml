@@ -38,6 +38,10 @@ linters:
     - unparam
     - unused
 
+issues:
+  # Fix found issues (if it's supported by the linter).
+  fix: true
+
 # output configuration options
 output:
   # colored-line-number|line-number|json|tab|checkstyle|code-climate, default is "colored-line-number"

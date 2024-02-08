@@ -111,7 +111,7 @@ func main() {
 
 func healthCheckServer() *http.Server {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
+	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
 
 	return &http.Server{
 		Addr:              ":8080",

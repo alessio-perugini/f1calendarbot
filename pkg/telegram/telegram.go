@@ -47,7 +47,7 @@ func NewTelegramRepository(tkn string, logger *zap.Logger) (Repository, error) {
 }
 
 func (t telegram) LoadHandler(endpoint string, handler tb.HandlerFunc) {
-	t.tBot.Handle(endpoint, handler, func(hf tb.HandlerFunc) tb.HandlerFunc {
+	t.tBot.Handle(endpoint, handler, func(_ tb.HandlerFunc) tb.HandlerFunc {
 		return func(ctx tb.Context) error {
 			defer func(start time.Time) {
 				requestDurationSummary.WithLabelValues(endpoint).Observe(float64(time.Since(start).Milliseconds()))
