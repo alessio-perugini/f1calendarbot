@@ -6,7 +6,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.5.4
 	github.com/prometheus/client_golang v1.18.0
 	github.com/shoenig/test v1.7.0
-	go.uber.org/zap v1.26.0
+	go.uber.org/zap v1.27.0
 	gopkg.in/telebot.v3 v3.2.1
 )
 
@@ -15,7 +15,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
-	github.com/matttproud/golang_protobuf_extensions/v2 v2.0.0 // indirect
 	github.com/prometheus/client_model v0.5.0 // indirect
 	github.com/prometheus/common v0.46.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
