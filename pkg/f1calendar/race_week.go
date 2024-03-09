@@ -21,7 +21,7 @@ type SessionToBeDone struct {
 
 func (r RaceWeek) String() string {
 	tw := table.NewWriter()
-	tw.SetTitle(r.Location + " (TZ: UTC+2)")
+	tw.SetTitle(r.Location + " (TZ: Europe/Rome)")
 	tw.AppendHeader(table.Row{"Session", "Time"})
 	tw.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
