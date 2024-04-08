@@ -3,7 +3,7 @@ module github.com/alessio-perugini/f1calendarbot
 go 1.22
 
 require (
-	github.com/jedib0t/go-pretty/v6 v6.5.6
+	github.com/jedib0t/go-pretty/v6 v6.5.8
 	github.com/prometheus/client_golang v1.19.0
 	github.com/shoenig/test v1.8.0
 	go.uber.org/zap v1.27.0
