@@ -1,7 +1,8 @@
 package subscription
 
 import (
-	"sync"
+	"github.com/alessio-perugini/f1calendarbot/pkg/subscription/store"
+	"go.uber.org/zap"
 )
 
 type Service interface {
@@ -11,40 +12,36 @@ type Service interface {
 }
 
 type Subscription struct {
-	mux             sync.RWMutex
-	subscribedChats map[int64]bool
+	store  *store.SubscriptionStore
+	logger *zap.Logger
 }
 
-func NewSubscriptionService() *Subscription {
+func NewSubscriptionService(
+	subscriptionStore *store.SubscriptionStore,
+	logger *zap.Logger,
+) *Subscription {
 	return &Subscription{
-		subscribedChats: make(map[int64]bool, 100),
+		store:  subscriptionStore,
+		logger: logger,
 	}
 }
 
 func (s *Subscription) Subscribe(id int64) {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-
-	if _, ok := s.subscribedChats[id]; !ok {
-		s.subscribedChats[id] = true
+	if err := s.store.Subscribe(id); err != nil {
+		s.logger.Error("unable to subscribe", zap.Error(err))
 	}
 }
 
 func (s *Subscription) Unsubscribe(id int64) {
-	s.mux.Lock()
-	defer s.mux.Unlock()
-
-	delete(s.subscribedChats, id)
+	if err := s.store.Unsubscribe(id); err != nil {
+		s.logger.Error("unable to unsubscribe", zap.Error(err))
+	}
 }
 
 func (s *Subscription) GetAllSubscribedChats() []int64 {
-	s.mux.RLock()
-	defer s.mux.RUnlock()
-
-	allSubbedUsers := make([]int64, 0, len(s.subscribedChats))
-	for u := range s.subscribedChats {
-		allSubbedUsers = append(allSubbedUsers, u)
+	res, err := s.store.GetAllSubscribedChats()
+	if err != nil {
+		s.logger.Error("unable to retreive all subscribed chats", zap.Error(err))
 	}
-
-	return allSubbedUsers
+	return res
 }
