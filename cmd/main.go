@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,6 +20,7 @@ import (
 	"github.com/alessio-perugini/f1calendarbot/pkg/subscription/store"
 	"github.com/alessio-perugini/f1calendarbot/pkg/telegram"
 	"github.com/alessio-perugini/f1calendarbot/pkg/telegram/handler"
+	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
 
 const f1CalendarEndpoint = "https://raw.githubusercontent.com/sportstimes/f1/main/_db/f1/2024.json"
@@ -64,18 +67,16 @@ func main() {
 		}
 	}()
 
-	subscriptionService := subscription.NewSubscriptionService()
-	fStore := store.NewFile("/src/subscribed_chats.txt", subscriptionService)
-	if err := fStore.LoadSubscribedChats(); err != nil {
-		logger.Error(err.Error())
+	dbURL := os.Getenv("F1CALENDAR__DATABASE_URL")
+	dbAuthToken := os.Getenv("F1CALENDAR__TURSO_AUTH_TOKEN")
+
+	db, err := sql.Open("libsql", fmt.Sprintf("libsql://%s.turso.io?authToken=%s", dbURL, dbAuthToken))
+	if err != nil {
+		logger.Fatal(fmt.Errorf("unable to connect to database: %v", err).Error())
 	}
-	defer func() {
-		logger.Info("dumping subscribed chats...")
-		if err := fStore.DumpSubscribedChats(); err != nil {
-			logger.Error(err.Error())
-		}
-		logger.Info("subscribed chats dumped!")
-	}()
+	defer db.Close()
+
+	subscriptionService := subscription.NewSubscriptionService(store.NewSubscriptionStore(db), logger)
 
 	tb, err := telegram.NewTelegramRepository(tkn, logger)
 	if err != nil {
