@@ -8,7 +8,7 @@ require (
 	github.com/shoenig/test v1.8.1
 	github.com/tursodatabase/libsql-client-go v0.0.0-20240723183952-b944339d7e70
 	go.uber.org/zap v1.27.0
-	gopkg.in/telebot.v3 v3.3.6
+	gopkg.in/telebot.v3 v3.3.8
 )
 
 require (
