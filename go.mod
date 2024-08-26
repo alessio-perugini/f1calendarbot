@@ -4,7 +4,7 @@ go 1.22
 
 require (
 	github.com/jedib0t/go-pretty/v6 v6.5.9
-	github.com/prometheus/client_golang v1.20.1
+	github.com/prometheus/client_golang v1.20.2
 	github.com/shoenig/test v1.9.1
 	github.com/tursodatabase/libsql-client-go v0.0.0-20240723183952-b944339d7e70
 	go.uber.org/zap v1.27.0
