@@ -1,8 +1,9 @@
 package subscription
 
 import (
-	"github.com/alessio-perugini/f1calendarbot/pkg/subscription/store"
 	"go.uber.org/zap"
+
+	"github.com/alessio-perugini/f1calendarbot/pkg/subscription/store"
 )
 
 type Service interface {
@@ -41,7 +42,7 @@ func (s *Subscription) Unsubscribe(id int64) {
 func (s *Subscription) GetAllSubscribedChats() []int64 {
 	res, err := s.store.GetAllSubscribedChats()
 	if err != nil {
-		s.logger.Error("unable to retreive all subscribed chats", zap.Error(err))
+		s.logger.Error("unable to retrieve all subscribed chats", zap.Error(err))
 	}
 	return res
 }

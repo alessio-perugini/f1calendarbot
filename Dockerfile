@@ -1,13 +1,16 @@
-FROM golang:1.22 AS go
+FROM golang:1.23 AS go
 
 WORKDIR /src
+
 COPY . .
+
+RUN go mod download
 
 RUN make build
 
 FROM alpine:latest AS alpine
 
-RUN apk --update add ca-certificates && apk add tzdata
+RUN apk --no-cache --update add ca-certificates tzdata
 
 COPY --from=go /src/bin/app /bin/app
 ENV TZ=Europe/Rome

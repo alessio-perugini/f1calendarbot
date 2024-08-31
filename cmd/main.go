@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	_ "github.com/tursodatabase/libsql-client-go/libsql"
 	"go.uber.org/zap"
 
 	"github.com/alessio-perugini/f1calendarbot/pkg/f1calendar"
@@ -20,7 +21,6 @@ import (
 	"github.com/alessio-perugini/f1calendarbot/pkg/subscription/store"
 	"github.com/alessio-perugini/f1calendarbot/pkg/telegram"
 	"github.com/alessio-perugini/f1calendarbot/pkg/telegram/handler"
-	_ "github.com/tursodatabase/libsql-client-go/libsql"
 )
 
 const f1CalendarEndpoint = "https://raw.githubusercontent.com/sportstimes/f1/main/_db/f1/2024.json"

@@ -1,0 +1,6 @@
+.git
+.github
+.env.dist
+.gitignore
+.golangci.yml
+README.md
