@@ -5,15 +5,18 @@ import (
 	"time"
 
 	"github.com/alessio-perugini/f1calendarbot/pkg/subscription"
-	"github.com/alessio-perugini/f1calendarbot/pkg/telegram"
 )
+
+type MessageSender interface {
+	SendMessageTo(ctx context.Context, chatID int64, message string)
+}
 
 type AlertFn func(msg string)
 
-func SendTelegramAlert(tg telegram.Repository, subscriptionService subscription.Service) AlertFn {
+func SendTelegramAlert(tg MessageSender, subscriptionService subscription.Service) AlertFn {
 	return func(msg string) {
 		for _, userID := range subscriptionService.GetAllSubscribedChats() {
-			_ = tg.SendMessageTo(userID, msg)
+			tg.SendMessageTo(context.Background(), userID, msg)
 		}
 	}
 }

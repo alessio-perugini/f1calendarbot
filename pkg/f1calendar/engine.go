@@ -21,8 +21,8 @@ func NewEngine(raceWeekRepository RaceWeekRepository, alertService *Alert) *Engi
 	}
 }
 
-func (e *Engine) Start() {
-	go e.alertService.Start(context.Background())
+func (e *Engine) Start(ctx context.Context) {
+	go e.alertService.Start(ctx)
 
 	ticker := time.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
@@ -36,6 +36,9 @@ func (e *Engine) Start() {
 				e.prepareNotificationTriggers()
 			}
 		case <-e.stop:
+			e.alertService.Shutdown()
+			return
+		case <-ctx.Done():
 			e.alertService.Shutdown()
 			return
 		}
