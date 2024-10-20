@@ -3,7 +3,6 @@ package f1calendar
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -24,17 +23,10 @@ func (c CalendarFetcher) getF1Calendar() *F1Calendar {
 	if err != nil || r == nil {
 		return nil
 	}
-
 	defer r.Body.Close()
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		slog.Error(err.Error())
-		return nil
-	}
-
 	var calendar F1Calendar
-	if err = json.Unmarshal(body, &calendar); err != nil {
+	if err = json.NewDecoder(r.Body).Decode(&calendar); err != nil {
 		slog.Error(err.Error())
 		return nil
 	}
