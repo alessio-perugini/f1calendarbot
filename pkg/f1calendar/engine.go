@@ -3,24 +3,21 @@ package f1calendar
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
-
-	"go.uber.org/zap"
 )
 
 type Engine struct {
 	raceWeekRepository RaceWeekRepository
 	alertService       *Alert
 	stop               chan struct{}
-	logger             *zap.Logger
 }
 
-func NewEngine(raceWeekRepository RaceWeekRepository, alertService *Alert, logger *zap.Logger) *Engine {
+func NewEngine(raceWeekRepository RaceWeekRepository, alertService *Alert) *Engine {
 	return &Engine{
 		raceWeekRepository: raceWeekRepository,
 		alertService:       alertService,
 		stop:               make(chan struct{}),
-		logger:             logger,
 	}
 }
 
@@ -32,7 +29,7 @@ func (e *Engine) Start() {
 	for {
 		select {
 		case now := <-ticker.C:
-			e.logger.Debug("checking for new f1 calendar events")
+			slog.Debug("checking for new f1 calendar events")
 
 			// f1 events starts on friday, this is used to not waste resources
 			if now.Weekday() == time.Sunday || now.Weekday() >= time.Thursday {
@@ -48,10 +45,10 @@ func (e *Engine) Start() {
 func (e *Engine) prepareNotificationTriggers() {
 	calendar := e.raceWeekRepository.GetRaceWeek()
 	if calendar == nil {
-		e.logger.Info("No race available")
+		slog.Info("No race available")
 		return
 	}
-	e.logger.Info(fmt.Sprintf("next f1 events is %s", calendar.Location))
+	slog.Info(fmt.Sprintf("next f1 events is %s", calendar.Location))
 
 	nextSession := calendar.Sessions[0]
 

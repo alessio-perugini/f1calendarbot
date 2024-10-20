@@ -1,10 +1,10 @@
 package telegram
 
 import (
+	"log/slog"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/zap"
 	tb "gopkg.in/telebot.v3"
 )
 
@@ -16,8 +16,7 @@ type Repository interface {
 }
 
 type telegram struct {
-	tBot   *tb.Bot
-	logger *zap.Logger
+	tBot *tb.Bot
 }
 
 var (
@@ -30,20 +29,20 @@ var (
 	)
 )
 
-func NewTelegramRepository(tkn string, logger *zap.Logger) (Repository, error) {
+func NewTelegramRepository(tkn string) (Repository, error) {
 	prometheus.MustRegister(requestDurationSummary)
 	tBot, err := tb.NewBot(tb.Settings{
 		Token:  tkn,
 		Poller: &tb.LongPoller{Timeout: 10 * time.Second},
 		OnError: func(err error, c tb.Context) {
-			logger.Error(err.Error(), zap.String("sender", c.Sender().Recipient()))
+			slog.Error(err.Error(), slog.String("sender", c.Sender().Recipient()))
 		},
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &telegram{tBot: tBot, logger: logger}, nil
+	return &telegram{tBot: tBot}, nil
 }
 
 func (t telegram) LoadHandler(endpoint string, handler tb.HandlerFunc) {

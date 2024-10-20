@@ -4,21 +4,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"sort"
 	"time"
-
-	"go.uber.org/zap"
 )
 
 type CalendarFetcher struct {
 	client      *http.Client
 	endpointURL string
-	logger      *zap.Logger
 }
 
-func NewCalendarFetcher(endpointURL string, logger *zap.Logger) *CalendarFetcher {
-	return &CalendarFetcher{client: &http.Client{}, endpointURL: endpointURL, logger: logger}
+func NewCalendarFetcher(endpointURL string) *CalendarFetcher {
+	return &CalendarFetcher{client: &http.Client{}, endpointURL: endpointURL}
 }
 
 func (c CalendarFetcher) getF1Calendar() *F1Calendar {
@@ -31,13 +29,13 @@ func (c CalendarFetcher) getF1Calendar() *F1Calendar {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		c.logger.Error(err.Error())
+		slog.Error(err.Error())
 		return nil
 	}
 
 	var calendar F1Calendar
 	if err = json.Unmarshal(body, &calendar); err != nil {
-		c.logger.Error(err.Error())
+		slog.Error(err.Error())
 		return nil
 	}
 
