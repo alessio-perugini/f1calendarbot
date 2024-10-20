@@ -42,8 +42,16 @@ func main() {
 	if tkn == "" {
 		logger.Fatal("no valid telegram token provided")
 	}
+	dbURL := os.Getenv("F1CALENDAR__DATABASE_URL")
+	dbAuthToken := os.Getenv("F1CALENDAR__TURSO_AUTH_TOKEN")
 
-	healthServer := healthCheckServer()
+	db, err := sql.Open("libsql", fmt.Sprintf("libsql://%s.turso.io?authToken=%s", dbURL, dbAuthToken))
+	if err != nil {
+		logger.Fatal(fmt.Errorf("unable to connect to database: %v", err).Error())
+	}
+	defer db.Close()
+
+	healthServer := healthCheckServer(db, logger)
 	go func() {
 		if err := healthServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error(err.Error())
@@ -67,22 +75,13 @@ func main() {
 		}
 	}()
 
-	dbURL := os.Getenv("F1CALENDAR__DATABASE_URL")
-	dbAuthToken := os.Getenv("F1CALENDAR__TURSO_AUTH_TOKEN")
-
-	db, err := sql.Open("libsql", fmt.Sprintf("libsql://%s.turso.io?authToken=%s", dbURL, dbAuthToken))
-	if err != nil {
-		logger.Fatal(fmt.Errorf("unable to connect to database: %v", err).Error())
-	}
-	defer db.Close()
-
-	subscriptionService := subscription.NewSubscriptionService(store.NewSubscriptionStore(db), logger)
-
 	tb, err := telegram.NewTelegramRepository(tkn, logger)
 	if err != nil {
 		logger.Fatal(err.Error())
 	}
+
 	cachedRaceWeekFetcher := f1calendar.NewCachedRaceWeek(f1calendar.NewCalendarFetcher(f1CalendarEndpoint, logger))
+	subscriptionService := subscription.NewSubscriptionService(store.NewSubscriptionStore(db), logger)
 	h := handler.NewHandler(tb, subscriptionService, cachedRaceWeekFetcher)
 
 	// load handlers
@@ -110,9 +109,16 @@ func main() {
 	tb.Stop()
 }
 
-func healthCheckServer() *http.Server {
+func healthCheckServer(db *sql.DB, logger *zap.Logger) *http.Server {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
+		if err := db.Ping(); err != nil {
+			logger.Error("healthcheck error", zap.Error(err))
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
 
 	return &http.Server{
 		Addr:              ":8080",
