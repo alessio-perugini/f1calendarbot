@@ -4,7 +4,7 @@ go 1.23
 
 require (
 	github.com/go-telegram/bot v1.9.1
-	github.com/jedib0t/go-pretty/v6 v6.6.0
+	github.com/jedib0t/go-pretty/v6 v6.6.1
 	github.com/prometheus/client_golang v1.20.5
 	github.com/shoenig/test v1.11.0
 	github.com/tursodatabase/libsql-client-go v0.0.0-20240902231107-85af5b9d094d
