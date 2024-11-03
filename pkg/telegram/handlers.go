@@ -48,6 +48,9 @@ func (t *Handlers) RegisterHandlers(b *bot.Bot) {
 
 func HandleDefault() bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
+		if update.Message == nil && update.ChannelPost == nil {
+			return
+		}
 		_ = sendMessage(ctx, b,
 			getChatID(update),
 			"Hello, I'm a bot that helps you to follow the F1 calendar",
@@ -95,8 +98,13 @@ func HandleOnRaceWeek(raceWeekRepository f1calendar.RaceWeekRepository) bot.Hand
 }
 
 func getChatID(b *models.Update) int64 {
-	if b.Message.Chat.Type == models.ChatTypePrivate {
-		return b.Message.Chat.ID
+	var msg *models.Message
+	if b.Message != nil {
+		msg = b.Message
+	} else if b.ChannelPost != nil {
+		msg = b.ChannelPost
+	} else {
+		panic("unexpected nil message")
 	}
-	return b.Message.SenderChat.ID
+	return msg.Chat.ID
 }
