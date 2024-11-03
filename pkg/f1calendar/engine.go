@@ -24,6 +24,8 @@ func NewEngine(raceWeekRepository RaceWeekRepository, alertService *Alert) *Engi
 func (e *Engine) Start(ctx context.Context) {
 	go e.alertService.Start(ctx)
 
+	e.prepareNotificationTriggers()
+
 	ticker := time.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
 	for {
