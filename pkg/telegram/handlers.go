@@ -61,8 +61,8 @@ func HandleDefault() bot.HandlerFunc {
 
 func HandleOnSubscribe(subscriptionService subscription.Service) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
-		chatID := getChatID(update)
-		subscriptionService.Subscribe(chatID)
+		chat := getChat(update)
+		subscriptionService.Subscribe(chat.ID, string(chat.Type))
 		_ = sendMessage(ctx, b,
 			getChatID(update),
 			"You have been subscribed successfully!",
@@ -97,7 +97,7 @@ func HandleOnRaceWeek(raceWeekRepository f1calendar.RaceWeekRepository) bot.Hand
 	}
 }
 
-func getChatID(b *models.Update) int64 {
+func getChat(b *models.Update) models.Chat {
 	var msg *models.Message
 	if b.Message != nil {
 		msg = b.Message
@@ -106,5 +106,9 @@ func getChatID(b *models.Update) int64 {
 	} else {
 		panic("unexpected nil message")
 	}
-	return msg.Chat.ID
+	return msg.Chat
+}
+
+func getChatID(b *models.Update) int64 {
+	return getChat(b).ID
 }

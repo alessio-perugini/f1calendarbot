@@ -14,10 +14,10 @@ func NewSubscriptionStore(db *sql.DB) *SubscriptionStore {
 	return &SubscriptionStore{db: db}
 }
 
-func (s *SubscriptionStore) Subscribe(id int64) error {
+func (s *SubscriptionStore) Subscribe(id int64, chatType string) error {
 	_, err := s.db.Exec(
-		`INSERT INTO subscribers(telegram_id) VALUES (?) ON CONFLICT (telegram_id) DO NOTHING`,
-		id,
+		`INSERT INTO subscribers(telegram_id, telegram_chat_type) VALUES (?, ?) ON CONFLICT (telegram_id) DO UPDATE SET telegram_chat_type = ?`,
+		id, chatType, chatType,
 	)
 	if err != nil {
 		return fmt.Errorf("store unable to subscribe err: %v", err)

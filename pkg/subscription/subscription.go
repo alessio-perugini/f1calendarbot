@@ -7,8 +7,8 @@ import (
 )
 
 type Service interface {
-	Subscribe(int64)
-	Unsubscribe(int64)
+	Subscribe(id int64, chatType string)
+	Unsubscribe(id int64)
 	GetAllSubscribedChats() []int64
 }
 
@@ -24,8 +24,8 @@ func NewSubscriptionService(
 	}
 }
 
-func (s *Subscription) Subscribe(id int64) {
-	if err := s.store.Subscribe(id); err != nil {
+func (s *Subscription) Subscribe(id int64, chatType string) {
+	if err := s.store.Subscribe(id, chatType); err != nil {
 		slog.Error("unable to subscribe", slog.Any("err", err), slog.Int64("id", id))
 	}
 }
