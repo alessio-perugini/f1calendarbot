@@ -116,9 +116,11 @@ func main() {
 
 	engine := f1calendar.NewEngine(
 		cachedRaceWeekFetcher,
-		f1calendar.NewAlert(f1calendar.SendTelegramAlert(
-			telegram.NewMessageSender(b),
-			subscriptionService),
+		f1calendar.NewAlert(
+			f1calendar.SendTelegramAlert(
+				telegram.NewMessageSender(b, subscriptionService),
+				subscriptionService,
+			),
 		),
 	)
 

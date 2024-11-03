@@ -48,7 +48,7 @@ func (t *Handlers) RegisterHandlers(b *bot.Bot) {
 
 func HandleDefault() bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
-		sendMessage(ctx, b,
+		_ = sendMessage(ctx, b,
 			getChatID(update),
 			"Hello, I'm a bot that helps you to follow the F1 calendar",
 			"",
@@ -60,7 +60,7 @@ func HandleOnSubscribe(subscriptionService subscription.Service) bot.HandlerFunc
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
 		chatID := getChatID(update)
 		subscriptionService.Subscribe(chatID)
-		sendMessage(ctx, b,
+		_ = sendMessage(ctx, b,
 			getChatID(update),
 			"You have been subscribed successfully!",
 			"",
@@ -72,7 +72,7 @@ func HandleOnUnsubscribe(subscriptionService subscription.Service) bot.HandlerFu
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
 		chatID := getChatID(update)
 		subscriptionService.Unsubscribe(chatID)
-		sendMessage(ctx, b,
+		_ = sendMessage(ctx, b,
 			getChatID(update),
 			"You have been unsubscribed successfully!",
 			"",
@@ -86,7 +86,7 @@ func HandleOnRaceWeek(raceWeekRepository f1calendar.RaceWeekRepository) bot.Hand
 		if rw := raceWeekRepository.GetRaceWeek(); rw != nil {
 			message = rw.String()
 		}
-		sendMessage(ctx, b,
+		_ = sendMessage(ctx, b,
 			getChatID(update),
 			message,
 			models.ParseModeHTML,

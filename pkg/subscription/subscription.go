@@ -26,13 +26,13 @@ func NewSubscriptionService(
 
 func (s *Subscription) Subscribe(id int64) {
 	if err := s.store.Subscribe(id); err != nil {
-		slog.Error("unable to subscribe", slog.Any("err", err))
+		slog.Error("unable to subscribe", slog.Any("err", err), slog.Int64("id", id))
 	}
 }
 
 func (s *Subscription) Unsubscribe(id int64) {
 	if err := s.store.Unsubscribe(id); err != nil {
-		slog.Error("unable to unsubscribe", slog.Any("err", err))
+		slog.Error("unable to unsubscribe", slog.Any("err", err), slog.Int64("id", id))
 	}
 }
 
