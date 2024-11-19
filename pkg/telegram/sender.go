@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 
-	"github.com/alessio-perugini/f1calendarbot/pkg/subscription"
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+
+	"github.com/alessio-perugini/f1calendarbot/pkg/subscription"
 )
 
 type MessageSender struct {

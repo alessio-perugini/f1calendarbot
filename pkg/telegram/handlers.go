@@ -99,11 +99,12 @@ func HandleOnRaceWeek(raceWeekRepository f1calendar.RaceWeekRepository) bot.Hand
 
 func getChat(b *models.Update) models.Chat {
 	var msg *models.Message
-	if b.Message != nil {
+	switch {
+	case b.Message != nil:
 		msg = b.Message
-	} else if b.ChannelPost != nil {
+	case b.ChannelPost != nil:
 		msg = b.ChannelPost
-	} else {
+	default:
 		panic("unexpected nil message")
 	}
 	return msg.Chat
