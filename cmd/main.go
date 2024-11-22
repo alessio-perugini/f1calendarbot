@@ -16,9 +16,18 @@ import (
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 	_ "github.com/tursodatabase/libsql-client-go/libsql"
+	"go.opentelemetry.io/contrib/bridges/otelslog"
+	"go.opentelemetry.io/contrib/instrumentation/runtime"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+	"go.opentelemetry.io/otel/log/global"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/log"
+	"go.opentelemetry.io/otel/sdk/metric"
 
+	"github.com/alessio-perugini/f1calendarbot/pkg/env"
 	"github.com/alessio-perugini/f1calendarbot/pkg/f1calendar"
-	"github.com/alessio-perugini/f1calendarbot/pkg/metrics"
 	"github.com/alessio-perugini/f1calendarbot/pkg/subscription"
 	"github.com/alessio-perugini/f1calendarbot/pkg/subscription/store"
 	"github.com/alessio-perugini/f1calendarbot/pkg/telegram"
@@ -26,18 +35,66 @@ import (
 
 const f1CalendarEndpoint = "https://raw.githubusercontent.com/sportstimes/f1/main/_db/f1/2024.json"
 
+func setupMetric(ctx context.Context) func(ctx context.Context) error {
+	metricExporter, err := otlpmetrichttp.New(ctx)
+	if err != nil {
+		panic(err)
+	}
+	mp := metric.NewMeterProvider(
+		metric.WithReader(
+			metric.NewPeriodicReader(
+				metricExporter,
+				metric.WithInterval(5*time.Second),
+			),
+		),
+	)
+	otel.SetMeterProvider(mp)
+	return mp.Shutdown
+}
+
+func setupLog(ctx context.Context) func(ctx context.Context) error {
+	exporter, err := otlploghttp.New(ctx)
+	if err != nil {
+		panic(err)
+	}
+	lp := log.NewLoggerProvider(
+		log.WithProcessor(
+			log.NewBatchProcessor(exporter),
+		),
+	)
+	global.SetLoggerProvider(lp)
+
+	return lp.Shutdown
+}
+
 func main() {
 	ctx := context.Background()
+
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
+	sm := setupMetric(ctx)
+	sl := setupLog(ctx)
+	// setup metric
+	defer func() {
+		_ = sm(ctx)
+		_ = sl(ctx)
+	}()
+
+	if err := runtime.Start(); err != nil {
+		panic(err)
+	}
+
+	slog.SetDefault(otelslog.NewLogger("f1calendar"))
+
 	if buildInfo, ok := debug.ReadBuildInfo(); ok {
 		slog.Info("f1calendar ", slog.String("buildinfo", buildInfo.String()))
 	}
 
-	tkn := os.Getenv("F1CALENDAR__TELEGRAM_TOKEN")
-	if tkn == "" {
-		panic("no valid telegram token provided")
-	}
-	dbURL := os.Getenv("F1CALENDAR__DATABASE_URL")
-	dbAuthToken := os.Getenv("F1CALENDAR__TURSO_AUTH_TOKEN")
+	tkn := env.MustGet("F1CALENDAR__TELEGRAM_TOKEN")
+	dbURL := env.MustGet("F1CALENDAR__DATABASE_URL")
+	dbAuthToken := env.MustGet("F1CALENDAR__TURSO_AUTH_TOKEN")
 
 	db, err := sql.Open("libsql", fmt.Sprintf("libsql://%s.turso.io?authToken=%s", dbURL, dbAuthToken))
 	if err != nil {
@@ -53,18 +110,6 @@ func main() {
 	}()
 	defer func() {
 		if err := healthServer.Shutdown(ctx); err != nil {
-			slog.Error(err.Error())
-		}
-	}()
-
-	metricsServer := metrics.NewServer()
-	go func() {
-		if err := metricsServer.ListenAndServe(":9000"); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error(err.Error())
-		}
-	}()
-	defer func() {
-		if err := metricsServer.Shutdown(ctx); err != nil {
 			slog.Error(err.Error())
 		}
 	}()
