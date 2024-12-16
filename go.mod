@@ -4,7 +4,7 @@ go 1.23
 
 require (
 	github.com/go-telegram/bot v1.11.1
-	github.com/jedib0t/go-pretty/v6 v6.6.3
+	github.com/jedib0t/go-pretty/v6 v6.6.5
 	github.com/shoenig/test v1.12.0
 	github.com/tursodatabase/libsql-client-go v0.0.0-20240902231107-85af5b9d094d
 	go.opentelemetry.io/contrib/bridges/otelslog v0.7.0
@@ -35,7 +35,7 @@ require (
 	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f // indirect
 	golang.org/x/net v0.31.0 // indirect
 	golang.org/x/sys v0.27.0 // indirect
-	golang.org/x/text v0.20.0 // indirect
+	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241118233622-e639e219e697 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241118233622-e639e219e697 // indirect
 	google.golang.org/grpc v1.68.0 // indirect
