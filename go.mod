@@ -3,7 +3,7 @@ module github.com/alessio-perugini/f1calendarbot
 go 1.23
 
 require (
-	github.com/go-telegram/bot v1.11.1
+	github.com/go-telegram/bot v1.12.1
 	github.com/jedib0t/go-pretty/v6 v6.6.5
 	github.com/shoenig/test v1.12.0
 	github.com/tursodatabase/libsql-client-go v0.0.0-20240902231107-85af5b9d094d
