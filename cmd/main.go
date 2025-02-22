@@ -33,7 +33,7 @@ import (
 	"github.com/alessio-perugini/f1calendarbot/pkg/telegram"
 )
 
-const f1CalendarEndpoint = "https://raw.githubusercontent.com/sportstimes/f1/main/_db/f1/2024.json"
+const f1CalendarEndpoint = "https://raw.githubusercontent.com/sportstimes/f1/main/_db/f1/2025.json"
 
 func setupMetric(ctx context.Context) func(ctx context.Context) error {
 	metricExporter, err := otlpmetrichttp.New(ctx)
