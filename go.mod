@@ -1,7 +1,6 @@
 module github.com/alessio-perugini/f1calendarbot
 
 go 1.23
-
 require (
 	github.com/go-telegram/bot v1.13.3
 	github.com/jedib0t/go-pretty/v6 v6.6.7
@@ -34,7 +33,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.34.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.5.0 // indirect
 	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67 // indirect
-	golang.org/x/net v0.34.0 // indirect
+	golang.org/x/net v0.36.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250115164207-1a7da9e5054f // indirect
