@@ -1,6 +1,6 @@
 module github.com/alessio-perugini/f1calendarbot
 
-go 1.23
+go 1.24
 
 require (
 	github.com/go-telegram/bot v1.13.3
