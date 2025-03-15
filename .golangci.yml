@@ -45,7 +45,8 @@ issues:
 # output configuration options
 output:
   # colored-line-number|line-number|json|tab|checkstyle|code-climate, default is "colored-line-number"
-  formats: colored-line-number
+  formats:
+    - format: colored-line-number
 
   # print lines of code with issue, default is true
   print-issued-lines: true
@@ -63,5 +64,3 @@ linters-settings:
       - standard # Captures all standard packages if they do not match another section.
       - default # Contains all imports that could not be matched to another section type.
       - prefix(github.com/alessio-perugini/f1calendarbot)
-    section-separators:
-      - newLine
