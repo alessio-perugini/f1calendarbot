@@ -8,7 +8,7 @@ require (
 	github.com/shoenig/test v1.12.0
 	github.com/tursodatabase/libsql-client-go v0.0.0-20240902231107-85af5b9d094d
 	go.opentelemetry.io/contrib/bridges/otelslog v0.10.0
-	go.opentelemetry.io/contrib/instrumentation/runtime v0.60.0
+	go.opentelemetry.io/contrib/instrumentation/runtime v0.62.0
 	go.opentelemetry.io/otel v1.37.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.11.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.35.0
