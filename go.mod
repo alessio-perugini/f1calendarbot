@@ -4,7 +4,7 @@ go 1.24
 
 require (
 	github.com/go-telegram/bot v1.16.0
-	github.com/jedib0t/go-pretty/v6 v6.6.7
+	github.com/jedib0t/go-pretty/v6 v6.6.9
 	github.com/shoenig/test v1.12.0
 	github.com/tursodatabase/libsql-client-go v0.0.0-20240902231107-85af5b9d094d
 	go.opentelemetry.io/contrib/bridges/otelslog v0.10.0
