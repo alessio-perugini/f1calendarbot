@@ -1,66 +1,69 @@
+version: "2"
 run:
-  tests: true
   build-tags:
     - integration
-
+  tests: true
+output:
+  formats:
+    text:
+      path: stdout
+      print-linter-name: true
+      print-issued-lines: true
 linters:
   enable:
     - asasalint
     - asciicheck
     - bidichk
     - bodyclose
+    - copyloopvar
     - dogsled
     - durationcheck
-    - errcheck
-    - copyloopvar
-    - gci
     - gochecknoinits
     - goconst
     - gocritic
-    - gofmt
-    - goimports
     - gosec
-    - gosimple
-    - govet
-    - ineffassign
     - misspell
     - nakedret
     - prealloc
     - revive
     - staticcheck
-    - stylecheck
     - tparallel
-    - typecheck
     - unconvert
     - unparam
-    - unused
-
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - .*_gen.go$
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  # Fix found issues (if it's supported by the linter).
   fix: true
-
-  exclude-files:
-    - ".*_gen.go$"
-
-# output configuration options
-output:
-  # colored-line-number|line-number|json|tab|checkstyle|code-climate, default is "colored-line-number"
-  formats:
-    - format: colored-line-number
-
-  # print lines of code with issue, default is true
-  print-issued-lines: true
-
-  # print linter name in the end of issue text, default is true
-  print-linter-name: true
-
-linters-settings:
-  gofmt:
-    simplify: true
-  goimports:
-    local-prefixes: github.com/alessio-perugini/f1calendarbot
-  gci:
-    sections:
-      - standard # Captures all standard packages if they do not match another section.
-      - default # Contains all imports that could not be matched to another section type.
-      - prefix(github.com/alessio-perugini/f1calendarbot)
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - goimports
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/alessio-perugini/f1calendarbot)
+    gofmt:
+      simplify: true
+    goimports:
+      local-prefixes:
+        - github.com/alessio-perugini/f1calendarbot
+  exclusions:
+    generated: lax
+    paths:
+      - .*_gen.go$
+      - third_party$
+      - builtin$
+      - examples$
