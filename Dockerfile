@@ -1,4 +1,4 @@
-FROM golang:1.24 AS go
+FROM golang:1.26 AS go
 
 WORKDIR /src
 
