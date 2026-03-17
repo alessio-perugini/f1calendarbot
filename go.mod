@@ -7,7 +7,7 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.7.8
 	github.com/shoenig/test v1.12.2
 	github.com/tursodatabase/libsql-client-go v0.0.0-20251219100830-236aa1ff8acc
-	go.opentelemetry.io/contrib/bridges/otelslog v0.15.0
+	go.opentelemetry.io/contrib/bridges/otelslog v0.17.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.67.0
 	go.opentelemetry.io/otel v1.42.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.18.0
