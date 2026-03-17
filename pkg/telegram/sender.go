@@ -21,7 +21,7 @@ func NewMessageSender(b *bot.Bot, s subscription.Service) *MessageSender {
 
 func (s *MessageSender) SendMessageTo(ctx context.Context, chatID int64, message string) {
 	if err := sendMessage(ctx, s.b, chatID, message, ""); errors.Is(err, bot.ErrorForbidden) {
-		s.subscriptionService.Unsubscribe(chatID)
+		s.subscriptionService.Unsubscribe(ctx, chatID)
 	}
 }
 

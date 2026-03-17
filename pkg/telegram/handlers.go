@@ -62,7 +62,7 @@ func HandleDefault() bot.HandlerFunc {
 func HandleOnSubscribe(subscriptionService subscription.Service) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
 		chat := getChat(update)
-		subscriptionService.Subscribe(chat.ID, string(chat.Type))
+		subscriptionService.Subscribe(ctx, chat.ID, string(chat.Type))
 		_ = sendMessage(ctx, b,
 			getChatID(update),
 			"You have been subscribed successfully!",
@@ -74,7 +74,7 @@ func HandleOnSubscribe(subscriptionService subscription.Service) bot.HandlerFunc
 func HandleOnUnsubscribe(subscriptionService subscription.Service) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
 		chatID := getChatID(update)
-		subscriptionService.Unsubscribe(chatID)
+		subscriptionService.Unsubscribe(ctx, chatID)
 		_ = sendMessage(ctx, b,
 			getChatID(update),
 			"You have been unsubscribed successfully!",

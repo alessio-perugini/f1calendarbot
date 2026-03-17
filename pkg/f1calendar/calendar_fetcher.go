@@ -7,6 +7,11 @@ import (
 	"net/http"
 	"sort"
 	"time"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
+	semconv "go.opentelemetry.io/otel/semconv/v1.40.0"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type CalendarFetcher struct {
@@ -15,7 +20,22 @@ type CalendarFetcher struct {
 }
 
 func NewCalendarFetcher(endpointURL string) *CalendarFetcher {
-	return &CalendarFetcher{client: &http.Client{}, endpointURL: endpointURL}
+	return &CalendarFetcher{
+		client: &http.Client{
+			Transport: otelhttp.NewTransport(
+				http.DefaultTransport,
+				otelhttp.WithSpanOptions(
+					trace.WithAttributes(semconv.ServicePeerName("github-sportstimes")),
+				),
+				otelhttp.WithMetricAttributesFn(func(r *http.Request) []attribute.KeyValue {
+					return []attribute.KeyValue{
+						semconv.ServicePeerName("github-sportstimes"),
+					}
+				}),
+			),
+		},
+		endpointURL: endpointURL,
+	}
 }
 
 func (c CalendarFetcher) getF1Calendar() *F1Calendar {

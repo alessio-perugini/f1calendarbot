@@ -21,10 +21,12 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/trace"
 
 	"github.com/alessio-perugini/f1calendarbot/pkg/env"
 	"github.com/alessio-perugini/f1calendarbot/pkg/f1calendar"
@@ -35,8 +37,38 @@ import (
 
 const f1CalendarEndpoint = "https://raw.githubusercontent.com/sportstimes/f1/main/_db/f1/2026.json"
 
+func setupTrace(ctx context.Context) func(ctx context.Context) error {
+	exporter, err := otlptracehttp.New(ctx,
+		otlptracehttp.WithEndpoint(os.Getenv("F1CALENDAR__OTEL_ENDPOINT")),
+		otlptracehttp.WithHeaders(map[string]string{
+			"Authorization": "Bearer " + os.Getenv("F1CALENDAR__OTEL_ENDPOINT_AUTH"),
+		}),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	tp := trace.NewTracerProvider(
+		trace.WithBatcher(exporter),
+	)
+
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	))
+	otel.SetTracerProvider(tp)
+
+	return tp.Shutdown
+}
+
 func setupMetric(ctx context.Context) func(ctx context.Context) error {
-	metricExporter, err := otlpmetrichttp.New(ctx)
+	metricExporter, err := otlpmetrichttp.New(
+		ctx,
+		otlpmetrichttp.WithEndpoint(os.Getenv("F1CALENDAR__OTEL_ENDPOINT")),
+		otlpmetrichttp.WithHeaders(map[string]string{
+			"Authorization": "Bearer " + os.Getenv("F1CALENDAR__OTEL_ENDPOINT_AUTH"),
+		}),
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -53,16 +85,35 @@ func setupMetric(ctx context.Context) func(ctx context.Context) error {
 }
 
 func setupLog(ctx context.Context) func(ctx context.Context) error {
-	exporter, err := otlploghttp.New(ctx)
+	exporter, err := otlploghttp.New(
+		ctx,
+		otlploghttp.WithEndpoint(os.Getenv("F1CALENDAR__OTEL_ENDPOINT")),
+		otlploghttp.WithHeaders(map[string]string{
+			"Authorization": "Bearer " + os.Getenv("F1CALENDAR__OTEL_ENDPOINT_AUTH"),
+		}),
+		otlploghttp.WithTimeout(10*time.Second),
+		otlploghttp.WithCompression(otlploghttp.GzipCompression),
+	)
 	if err != nil {
 		panic(err)
 	}
+
 	lp := log.NewLoggerProvider(
-		log.WithProcessor(
-			log.NewBatchProcessor(exporter),
-		),
+		log.WithProcessor(log.NewBatchProcessor(exporter)),
 	)
+
 	global.SetLoggerProvider(lp)
+
+	otelHandler := otelslog.NewHandler(
+		os.Getenv("OTEL_SERVICE_NAME"),
+		otelslog.WithLoggerProvider(lp),
+	)
+
+	stdoutHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{})
+
+	slog.SetDefault(
+		slog.New(slog.NewMultiHandler(stdoutHandler, otelHandler)),
+	)
 
 	return lp.Shutdown
 }
@@ -70,23 +121,20 @@ func setupLog(ctx context.Context) func(ctx context.Context) error {
 func main() {
 	ctx := context.Background()
 
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-		propagation.TraceContext{},
-		propagation.Baggage{},
-	))
 	sm := setupMetric(ctx)
 	sl := setupLog(ctx)
-	// setup metric
+	st := setupTrace(ctx)
+
+	// setup observability
 	defer func() {
 		_ = sm(ctx)
 		_ = sl(ctx)
+		_ = st(ctx)
 	}()
 
 	if err := runtime.Start(); err != nil {
 		panic(err)
 	}
-
-	slog.SetDefault(otelslog.NewLogger("f1calendar"))
 
 	if buildInfo, ok := debug.ReadBuildInfo(); ok {
 		slog.Info("f1calendar ", slog.String("buildinfo", buildInfo.String()))
@@ -121,7 +169,7 @@ func main() {
 
 	opts := []bot.Option{
 		bot.WithDefaultHandler(telegram.HandleDefault()),
-		bot.WithErrorsHandler(func(err error) { slog.Error("telegram error", slog.Any("err", err.Error())) }),
+		bot.WithErrorsHandler(func(err error) { slog.Error("telegram error", slog.String("error", err.Error())) }),
 		bot.WithWorkers(3),
 	}
 	b, err := bot.New(tkn, opts...)
@@ -185,7 +233,7 @@ func healthCheckServer(db *sql.DB) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		if err := db.Ping(); err != nil {
-			slog.Error("healthcheck error", slog.Any("err", err))
+			slog.Error("healthcheck error", slog.String("error", err.Error()))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}

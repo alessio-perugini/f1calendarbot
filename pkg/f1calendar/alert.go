@@ -15,7 +15,7 @@ type AlertFn func(msg string)
 
 func SendTelegramAlert(tg MessageSender, subscriptionService subscription.Service) AlertFn {
 	return func(msg string) {
-		for _, userID := range subscriptionService.GetAllSubscribedChats() {
+		for _, userID := range subscriptionService.GetAllSubscribedChats(context.Background()) {
 			tg.SendMessageTo(context.Background(), userID, msg)
 		}
 	}
