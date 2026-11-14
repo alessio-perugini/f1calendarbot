@@ -2,22 +2,64 @@ package f1calendar
 
 import (
 	"context"
+	"log/slog"
 	"time"
+)
 
-	"github.com/alessio-perugini/f1calendarbot/pkg/subscription"
+const (
+	subscribersAttempts = 3
+	subscribersBackoff  = 2 * time.Second
 )
 
 type MessageSender interface {
 	SendMessageTo(ctx context.Context, chatID int64, message string)
 }
 
+type SubscribersLister interface {
+	GetAllSubscribedChats(ctx context.Context) ([]int64, error)
+}
+
 type AlertFn func(msg string)
 
-func SendTelegramAlert(tg MessageSender, subscriptionService subscription.Service) AlertFn {
+// SendTelegramAlert broadcasts msg to every subscribed chat.
+func SendTelegramAlert(tg MessageSender, subscribers SubscribersLister) AlertFn {
 	return func(msg string) {
-		for _, userID := range subscriptionService.GetAllSubscribedChats(context.Background()) {
-			tg.SendMessageTo(context.Background(), userID, msg)
+		ctx := context.Background()
+		chats, err := getSubscribers(ctx, subscribers, subscribersBackoff)
+		if err != nil {
+			slog.ErrorContext(ctx, "alert not sent: unable to get subscribers", slog.Any("error", err))
+			return
 		}
+		for _, chatID := range chats {
+			tg.SendMessageTo(ctx, chatID, msg)
+		}
+	}
+}
+
+func getSubscribers(ctx context.Context, subscribers SubscribersLister, backoff time.Duration) ([]int64, error) {
+	var err error
+	for attempt := range subscribersAttempts {
+		if attempt > 0 && !sleep(ctx, time.Duration(attempt)*backoff) {
+			return nil, ctx.Err()
+		}
+		var chats []int64
+		if chats, err = subscribers.GetAllSubscribedChats(ctx); err == nil {
+			return chats, nil
+		}
+		slog.WarnContext(ctx, "unable to get subscribers", slog.Int("attempt", attempt+1), slog.Any("error", err))
+	}
+	return nil, err
+}
+
+// sleep waits for d and reports false if ctx was cancelled first.
+func sleep(ctx context.Context, d time.Duration) bool {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-t.C:
+		return true
+	case <-ctx.Done():
+		return false
 	}
 }
 

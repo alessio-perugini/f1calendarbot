@@ -8,21 +8,24 @@ import (
 	"github.com/go-telegram/bot/models"
 
 	"github.com/alessio-perugini/f1calendarbot/pkg/f1calendar"
-	"github.com/alessio-perugini/f1calendarbot/pkg/subscription"
 )
 
-type Handlers struct {
-	subscriptionService subscription.Service
-	raceWeekRepository  f1calendar.RaceWeekRepository
+const errorMessage = "Something went wrong, please try again later."
+
+type Subscriber interface {
+	Subscribe(ctx context.Context, id int64, chatType string) error
+	Unsubscribe(ctx context.Context, id int64) error
 }
 
-func NewTelegramBotHandlers(
-	subscriptionService subscription.Service,
-	raceWeekRepository f1calendar.RaceWeekRepository,
-) *Handlers {
+type Handlers struct {
+	subscriber         Subscriber
+	raceWeekRepository f1calendar.RaceWeekRepository
+}
+
+func NewTelegramBotHandlers(subscriber Subscriber, raceWeekRepository f1calendar.RaceWeekRepository) *Handlers {
 	return &Handlers{
-		subscriptionService: subscriptionService,
-		raceWeekRepository:  raceWeekRepository,
+		subscriber:         subscriber,
+		raceWeekRepository: raceWeekRepository,
 	}
 }
 
@@ -31,13 +34,13 @@ func (t *Handlers) RegisterHandlers(b *bot.Bot) {
 		bot.HandlerTypeMessageText,
 		"/unsubscribe",
 		bot.MatchTypePrefix,
-		HandleOnUnsubscribe(t.subscriptionService),
+		HandleOnUnsubscribe(t.subscriber),
 	)
 	_ = b.RegisterHandler(
 		bot.HandlerTypeMessageText,
 		"/subscribe",
 		bot.MatchTypePrefix,
-		HandleOnSubscribe(t.subscriptionService),
+		HandleOnSubscribe(t.subscriber),
 	)
 	_ = b.RegisterHandler(
 		bot.HandlerTypeMessageText,
@@ -60,27 +63,27 @@ func HandleDefault() bot.HandlerFunc {
 	}
 }
 
-func HandleOnSubscribe(subscriptionService subscription.Service) bot.HandlerFunc {
+func HandleOnSubscribe(subscriber Subscriber) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
 		chat := getChat(update)
-		subscriptionService.Subscribe(ctx, chat.ID, string(chat.Type))
-		_ = sendMessage(ctx, b,
-			getChatID(update),
-			"You have been subscribed successfully!",
-			"",
-		)
+		text := "You have been subscribed successfully!"
+		if err := subscriber.Subscribe(ctx, chat.ID, string(chat.Type)); err != nil {
+			slog.ErrorContext(ctx, "unable to subscribe", slog.Int64("chat_id", chat.ID), slog.Any("error", err))
+			text = errorMessage
+		}
+		_ = sendMessage(ctx, b, chat.ID, text, "")
 	}
 }
 
-func HandleOnUnsubscribe(subscriptionService subscription.Service) bot.HandlerFunc {
+func HandleOnUnsubscribe(subscriber Subscriber) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
 		chatID := getChatID(update)
-		subscriptionService.Unsubscribe(ctx, chatID)
-		_ = sendMessage(ctx, b,
-			getChatID(update),
-			"You have been unsubscribed successfully!",
-			"",
-		)
+		text := "You have been unsubscribed successfully!"
+		if err := subscriber.Unsubscribe(ctx, chatID); err != nil {
+			slog.ErrorContext(ctx, "unable to unsubscribe", slog.Int64("chat_id", chatID), slog.Any("error", err))
+			text = errorMessage
+		}
+		_ = sendMessage(ctx, b, chatID, text, "")
 	}
 }
 
@@ -91,7 +94,7 @@ func HandleOnRaceWeek(raceWeekRepository f1calendar.RaceWeekRepository) bot.Hand
 		switch {
 		case err != nil:
 			slog.ErrorContext(ctx, "unable to get race week", slog.Any("error", err))
-			message = "Something went wrong, please try again later."
+			message = errorMessage
 		case rw != nil:
 			message = rw.String()
 		}

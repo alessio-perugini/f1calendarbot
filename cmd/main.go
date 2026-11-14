@@ -31,7 +31,6 @@ import (
 	"github.com/alessio-perugini/f1calendarbot/pkg/env"
 	"github.com/alessio-perugini/f1calendarbot/pkg/f1calendar"
 	"github.com/alessio-perugini/f1calendarbot/pkg/subscription"
-	"github.com/alessio-perugini/f1calendarbot/pkg/subscription/store"
 	"github.com/alessio-perugini/f1calendarbot/pkg/telegram"
 )
 
@@ -163,7 +162,7 @@ func main() {
 	}()
 
 	cachedRaceWeekFetcher := f1calendar.NewCachedRaceWeek(f1calendar.NewCalendarFetcher(f1CalendarBaseURL, time.Local))
-	subscriptionService := subscription.NewSubscriptionService(store.NewSubscriptionStore(db))
+	subscriptionStore := subscription.NewStore(db)
 
 	slog.Info("Server is starting...")
 
@@ -204,15 +203,15 @@ func main() {
 	}
 
 	telegram.
-		NewTelegramBotHandlers(subscriptionService, cachedRaceWeekFetcher).
+		NewTelegramBotHandlers(subscriptionStore, cachedRaceWeekFetcher).
 		RegisterHandlers(b)
 
 	engine := f1calendar.NewEngine(
 		cachedRaceWeekFetcher,
 		f1calendar.NewAlert(
 			f1calendar.SendTelegramAlert(
-				telegram.NewMessageSender(b, subscriptionService),
-				subscriptionService,
+				telegram.NewMessageSender(b, subscriptionStore),
+				subscriptionStore,
 			),
 		),
 	)
