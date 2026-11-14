@@ -21,13 +21,16 @@ type SubscribersLister interface {
 	GetAllSubscribedChats(ctx context.Context) ([]int64, error)
 }
 
-type AlertFn func(msg string)
+type AlertFn func(ctx context.Context, msg string)
 
 // SendTelegramAlert broadcasts msg to every subscribed chat.
 func SendTelegramAlert(tg MessageSender, subscribers SubscribersLister) AlertFn {
-	return func(msg string) {
-		ctx := context.Background()
-		chats, err := getSubscribers(ctx, subscribers, subscribersBackoff)
+	return sendAlert(tg, subscribers, subscribersBackoff)
+}
+
+func sendAlert(tg MessageSender, subscribers SubscribersLister, backoff time.Duration) AlertFn {
+	return func(ctx context.Context, msg string) {
+		chats, err := getSubscribers(ctx, subscribers, backoff)
 		if err != nil {
 			slog.ErrorContext(ctx, "alert not sent: unable to get subscribers", slog.Any("error", err))
 			return
@@ -71,16 +74,12 @@ func sleep(ctx context.Context, d time.Duration) bool {
 type Alert struct {
 	fn       AlertFn
 	messages chan messageToBeFired
-	stop     chan struct{}
-	stopped  chan struct{}
 }
 
 func NewAlert(fn AlertFn) *Alert {
 	return &Alert{
 		fn:       fn,
 		messages: make(chan messageToBeFired),
-		stopped:  make(chan struct{}),
-		stop:     make(chan struct{}),
 	}
 }
 
@@ -89,13 +88,15 @@ type messageToBeFired struct {
 	Time    time.Time
 }
 
-func (a *Alert) Push(t time.Time, msg string) {
-	a.messages <- messageToBeFired{
-		Message: msg,
-		Time:    t,
+// Push schedules msg at t, replacing the previously scheduled message.
+func (a *Alert) Push(ctx context.Context, t time.Time, msg string) {
+	select {
+	case a.messages <- messageToBeFired{Message: msg, Time: t}:
+	case <-ctx.Done():
 	}
 }
 
+// Start fires the scheduled messages until ctx is cancelled.
 func (a *Alert) Start(ctx context.Context) {
 	var nextMessage messageToBeFired
 	var timer *time.Timer
@@ -104,7 +105,6 @@ func (a *Alert) Start(ctx context.Context) {
 		if timer != nil {
 			timer.Stop()
 		}
-		a.stopped <- struct{}{}
 	}()
 
 	for {
@@ -117,16 +117,9 @@ func (a *Alert) Start(ctx context.Context) {
 			if timer != nil {
 				timer.Stop()
 			}
-			timer = time.AfterFunc(time.Until(nextMessage.Time), func() { a.fn(msg.Message) })
-		case <-a.stop:
-			return
+			timer = time.AfterFunc(time.Until(msg.Time), func() { a.fn(ctx, msg.Message) })
 		case <-ctx.Done():
 			return
 		}
 	}
-}
-
-func (a *Alert) Shutdown() {
-	a.stop <- struct{}{}
-	<-a.stopped
 }

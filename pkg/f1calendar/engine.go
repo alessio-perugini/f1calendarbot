@@ -7,22 +7,28 @@ import (
 	"time"
 )
 
+const alertBefore = 10 * time.Minute
+
 type Engine struct {
 	raceWeekRepository RaceWeekRepository
 	alertService       *Alert
-	stop               chan struct{}
 }
 
 func NewEngine(raceWeekRepository RaceWeekRepository, alertService *Alert) *Engine {
 	return &Engine{
 		raceWeekRepository: raceWeekRepository,
 		alertService:       alertService,
-		stop:               make(chan struct{}),
 	}
 }
 
+// Start schedules alerts until ctx is cancelled.
 func (e *Engine) Start(ctx context.Context) {
-	go e.alertService.Start(ctx)
+	alertDone := make(chan struct{})
+	go func() {
+		defer close(alertDone)
+		e.alertService.Start(ctx)
+	}()
+	defer func() { <-alertDone }()
 
 	e.prepareNotificationTriggers(ctx)
 
@@ -30,18 +36,10 @@ func (e *Engine) Start(ctx context.Context) {
 	defer ticker.Stop()
 	for {
 		select {
-		case now := <-ticker.C:
-			slog.Debug("checking for new f1 calendar events")
-
-			// f1 events starts on friday, this is used to not waste resources
-			if now.Weekday() == time.Sunday || now.Weekday() >= time.Thursday {
-				e.prepareNotificationTriggers(ctx)
-			}
-		case <-e.stop:
-			e.alertService.Shutdown()
-			return
+		case <-ticker.C:
+			slog.DebugContext(ctx, "checking for new f1 calendar events")
+			e.prepareNotificationTriggers(ctx)
 		case <-ctx.Done():
-			e.alertService.Shutdown()
 			return
 		}
 	}
@@ -54,19 +52,17 @@ func (e *Engine) prepareNotificationTriggers(ctx context.Context) {
 		return
 	}
 	if calendar == nil {
-		slog.Info("No race available")
+		slog.InfoContext(ctx, "no race available")
 		return
 	}
-	slog.Info(fmt.Sprintf("next f1 events is %s", calendar.Location))
+	slog.InfoContext(ctx, "next f1 event", slog.String("location", calendar.Location))
 
+	// A past alertAt (e.g. a restart inside the alert window) fires right away.
+	// The message must not depend on the current time, so that every tick pushes
+	// the same message and Alert sends it only once.
 	nextSession := calendar.Sessions[0]
-
-	e.alertService.Push(
-		nextSession.Time.Add(-10*time.Minute),
-		fmt.Sprintf("%s %s will start in 10 minutes! ", calendar.Location, nextSession.Name),
+	e.alertService.Push(ctx,
+		nextSession.Time.Add(-alertBefore),
+		fmt.Sprintf("%s %s starts at %s!", calendar.Location, nextSession.DisplayName(), nextSession.Time.Format("15:04")),
 	)
-}
-
-func (e *Engine) Stop() {
-	e.stop <- struct{}{}
 }

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime/debug"
+	"sync"
 	"syscall"
 	"time"
 
@@ -37,6 +38,8 @@ import (
 const (
 	f1CalendarBaseURL = "https://raw.githubusercontent.com/sportstimes/f1/main/_db/f1"
 	migrateTimeout    = 30 * time.Second
+	shutdownTimeout   = 10 * time.Second
+	healthTimeout     = 3 * time.Second
 )
 
 func setupTrace(ctx context.Context) func(ctx context.Context) error {
@@ -121,7 +124,8 @@ func setupLog(ctx context.Context) func(ctx context.Context) error {
 }
 
 func main() {
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+	defer stop()
 
 	sm := setupMetric(ctx)
 	sl := setupLog(ctx)
@@ -129,9 +133,11 @@ func main() {
 
 	// setup observability
 	defer func() {
-		_ = sm(ctx)
-		_ = sl(ctx)
-		_ = st(ctx)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+		_ = sm(shutdownCtx)
+		_ = sl(shutdownCtx)
+		_ = st(shutdownCtx)
 	}()
 
 	if err := runtime.Start(); err != nil {
@@ -166,7 +172,9 @@ func main() {
 		}
 	}()
 	defer func() {
-		if err := healthServer.Shutdown(ctx); err != nil {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+		if err := healthServer.Shutdown(shutdownCtx); err != nil {
 			slog.Error(err.Error())
 		}
 	}()
@@ -180,6 +188,8 @@ func main() {
 		bot.WithDefaultHandler(telegram.HandleDefault()),
 		bot.WithErrorsHandler(func(err error) { slog.Error("telegram error", slog.String("error", err.Error())) }),
 		bot.WithWorkers(3),
+		// run handlers on the workers so b.Start waits for them on shutdown
+		bot.WithNotAsyncHandlers(),
 	}
 	b, err := bot.New(tkn, opts...)
 	if err != nil {
@@ -226,23 +236,22 @@ func main() {
 		),
 	)
 
-	go engine.Start(ctx)
-	go b.Start(ctx)
+	var wg sync.WaitGroup
+	wg.Go(func() { engine.Start(ctx) })
+	wg.Go(func() { b.Start(ctx) })
 
-	signalCh := make(chan os.Signal, 1)
-	signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
-
-	<-signalCh
+	<-ctx.Done()
 	slog.Info("Server is stopping...")
-
-	engine.Stop()
+	wg.Wait()
 }
 
 func healthCheckServer(db *sql.DB) *http.Server {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
-		if err := db.Ping(); err != nil {
-			slog.Error("healthcheck error", slog.String("error", err.Error()))
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), healthTimeout)
+		defer cancel()
+		if err := db.PingContext(ctx); err != nil {
+			slog.ErrorContext(ctx, "healthcheck error", slog.Any("error", err))
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -254,5 +263,6 @@ func healthCheckServer(db *sql.DB) *http.Server {
 		Handler:           mux,
 		ReadTimeout:       10 * time.Second,
 		ReadHeaderTimeout: 10 * time.Second,
+		WriteTimeout:      10 * time.Second,
 	}
 }
