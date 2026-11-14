@@ -1,18 +1,18 @@
-FROM golang:1.26 AS go
+FROM golang:1.26 AS build
 
 WORKDIR /src
 
-COPY . .
-
+COPY go.mod go.sum ./
 RUN go mod download
 
+COPY . .
 RUN make build
 
-FROM alpine:latest AS alpine
+FROM gcr.io/distroless/static-debian12:nonroot
 
-RUN apk --no-cache --update add ca-certificates tzdata
+COPY --from=build /src/bin/app /bin/app
 
-COPY --from=go /src/bin/app /bin/app
-ENV TZ=Europe/Rome
+EXPOSE 8080
+USER nonroot:nonroot
 
 ENTRYPOINT ["/bin/app"]
