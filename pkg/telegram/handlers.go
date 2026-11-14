@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -86,7 +87,12 @@ func HandleOnUnsubscribe(subscriptionService subscription.Service) bot.HandlerFu
 func HandleOnRaceWeek(raceWeekRepository f1calendar.RaceWeekRepository) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
 		message := "no race available"
-		if rw := raceWeekRepository.GetRaceWeek(); rw != nil {
+		rw, err := raceWeekRepository.GetRaceWeek(ctx)
+		switch {
+		case err != nil:
+			slog.ErrorContext(ctx, "unable to get race week", slog.Any("error", err))
+			message = "Something went wrong, please try again later."
+		case rw != nil:
 			message = rw.String()
 		}
 		_ = sendMessage(ctx, b,

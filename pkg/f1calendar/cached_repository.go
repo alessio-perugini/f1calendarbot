@@ -1,13 +1,14 @@
 package f1calendar
 
 import (
+	"context"
 	"time"
 
 	"github.com/alessio-perugini/f1calendarbot/pkg/cache"
 )
 
 type RaceWeekRepository interface {
-	GetRaceWeek() *RaceWeek
+	GetRaceWeek(ctx context.Context) (*RaceWeek, error)
 }
 
 type CachedRaceWeek struct {
@@ -22,14 +23,16 @@ func NewCachedRaceWeek(raceWeekRepository RaceWeekRepository) *CachedRaceWeek {
 	}
 }
 
-func (c CachedRaceWeek) GetRaceWeek() *RaceWeek {
+func (c CachedRaceWeek) GetRaceWeek(ctx context.Context) (*RaceWeek, error) {
 	key := "current-race-week"
-	rw := c.cache.Get(key)
-	if rw != nil {
-		return rw
+	if rw := c.cache.Get(key); rw != nil {
+		return rw, nil
 	}
 
-	rw = c.RaceWeekRepository.GetRaceWeek()
+	rw, err := c.RaceWeekRepository.GetRaceWeek(ctx)
+	if err != nil {
+		return nil, err
+	}
 	c.cache.Set(key, rw, 59*time.Minute)
-	return rw
+	return rw, nil
 }

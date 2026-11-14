@@ -35,7 +35,7 @@ import (
 	"github.com/alessio-perugini/f1calendarbot/pkg/telegram"
 )
 
-const f1CalendarEndpoint = "https://raw.githubusercontent.com/sportstimes/f1/main/_db/f1/2026.json"
+const f1CalendarBaseURL = "https://raw.githubusercontent.com/sportstimes/f1/main/_db/f1"
 
 func setupTrace(ctx context.Context) func(ctx context.Context) error {
 	exporter, err := otlptracehttp.New(ctx,
@@ -162,7 +162,7 @@ func main() {
 		}
 	}()
 
-	cachedRaceWeekFetcher := f1calendar.NewCachedRaceWeek(f1calendar.NewCalendarFetcher(f1CalendarEndpoint))
+	cachedRaceWeekFetcher := f1calendar.NewCachedRaceWeek(f1calendar.NewCalendarFetcher(f1CalendarBaseURL, time.Local))
 	subscriptionService := subscription.NewSubscriptionService(store.NewSubscriptionStore(db))
 
 	slog.Info("Server is starting...")

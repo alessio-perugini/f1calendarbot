@@ -24,7 +24,7 @@ func NewEngine(raceWeekRepository RaceWeekRepository, alertService *Alert) *Engi
 func (e *Engine) Start(ctx context.Context) {
 	go e.alertService.Start(ctx)
 
-	e.prepareNotificationTriggers()
+	e.prepareNotificationTriggers(ctx)
 
 	ticker := time.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
@@ -35,7 +35,7 @@ func (e *Engine) Start(ctx context.Context) {
 
 			// f1 events starts on friday, this is used to not waste resources
 			if now.Weekday() == time.Sunday || now.Weekday() >= time.Thursday {
-				e.prepareNotificationTriggers()
+				e.prepareNotificationTriggers(ctx)
 			}
 		case <-e.stop:
 			e.alertService.Shutdown()
@@ -47,8 +47,12 @@ func (e *Engine) Start(ctx context.Context) {
 	}
 }
 
-func (e *Engine) prepareNotificationTriggers() {
-	calendar := e.raceWeekRepository.GetRaceWeek()
+func (e *Engine) prepareNotificationTriggers(ctx context.Context) {
+	calendar, err := e.raceWeekRepository.GetRaceWeek(ctx)
+	if err != nil {
+		slog.ErrorContext(ctx, "unable to get race week", slog.Any("error", err))
+		return
+	}
 	if calendar == nil {
 		slog.Info("No race available")
 		return
