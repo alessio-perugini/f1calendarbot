@@ -3,6 +3,7 @@ package telegram
 import (
 	"context"
 	"log/slog"
+	"strings"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -10,7 +11,13 @@ import (
 	"github.com/alessio-perugini/f1calendarbot/pkg/f1calendar"
 )
 
-const errorMessage = "Something went wrong, please try again later."
+const (
+	helpMessage = "Hello, I'm a bot that helps you follow the F1 calendar.\n\n" +
+		"/subscribe - get an alert 10 minutes before every session\n" +
+		"/unsubscribe - stop the alerts\n" +
+		"/nextrace - show the next race week"
+	errorMessage = "Something went wrong, please try again later."
+)
 
 type Subscriber interface {
 	Subscribe(ctx context.Context, id int64, chatType string) error
@@ -30,95 +37,96 @@ func NewTelegramBotHandlers(subscriber Subscriber, raceWeekRepository f1calendar
 }
 
 func (t *Handlers) RegisterHandlers(b *bot.Bot) {
-	_ = b.RegisterHandler(
-		bot.HandlerTypeMessageText,
-		"/unsubscribe",
-		bot.MatchTypePrefix,
-		HandleOnUnsubscribe(t.subscriber),
-	)
-	_ = b.RegisterHandler(
-		bot.HandlerTypeMessageText,
-		"/subscribe",
-		bot.MatchTypePrefix,
-		HandleOnSubscribe(t.subscriber),
-	)
-	_ = b.RegisterHandler(
-		bot.HandlerTypeMessageText,
-		"/nextrace",
-		bot.MatchTypePrefix,
-		HandleOnRaceWeek(t.raceWeekRepository),
-	)
+	b.RegisterHandlerMatchFunc(matchCommand("unsubscribe"), HandleOnUnsubscribe(t.subscriber))
+	b.RegisterHandlerMatchFunc(matchCommand("subscribe"), HandleOnSubscribe(t.subscriber))
+	b.RegisterHandlerMatchFunc(matchCommand("nextrace"), HandleOnRaceWeek(t.raceWeekRepository))
+}
+
+// matchCommand matches "/<cmd>" and "/<cmd>@botname" in private chats, groups and channels.
+func matchCommand(cmd string) bot.MatchFunc {
+	return func(update *models.Update) bool {
+		msg := getMessage(update)
+		if msg == nil {
+			return false
+		}
+		first, _, _ := strings.Cut(msg.Text, " ")
+		name, _, _ := strings.Cut(first, "@")
+		return name == "/"+cmd
+	}
 }
 
 func HandleDefault() bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
-		if update.Message == nil && update.ChannelPost == nil {
+		msg := getMessage(update)
+		if msg == nil || msg.Text == "" {
 			return
 		}
-		_ = sendMessage(ctx, b,
-			getChatID(update),
-			"Hello, I'm a bot that helps you to follow the F1 calendar",
-			"",
-		)
+		// in groups and channels only answer unknown commands, not every message
+		if msg.Chat.Type != models.ChatTypePrivate && !strings.HasPrefix(msg.Text, "/") {
+			return
+		}
+		reply(ctx, b, msg.Chat.ID, helpMessage, "")
 	}
 }
 
 func HandleOnSubscribe(subscriber Subscriber) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
-		chat := getChat(update)
+		msg := getMessage(update)
+		if msg == nil {
+			return
+		}
 		text := "You have been subscribed successfully!"
-		if err := subscriber.Subscribe(ctx, chat.ID, string(chat.Type)); err != nil {
-			slog.ErrorContext(ctx, "unable to subscribe", slog.Int64("chat_id", chat.ID), slog.Any("error", err))
+		if err := subscriber.Subscribe(ctx, msg.Chat.ID, string(msg.Chat.Type)); err != nil {
+			slog.ErrorContext(ctx, "unable to subscribe", slog.Int64("chat_id", msg.Chat.ID), slog.Any("error", err))
 			text = errorMessage
 		}
-		_ = sendMessage(ctx, b, chat.ID, text, "")
+		reply(ctx, b, msg.Chat.ID, text, "")
 	}
 }
 
 func HandleOnUnsubscribe(subscriber Subscriber) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
-		chatID := getChatID(update)
+		msg := getMessage(update)
+		if msg == nil {
+			return
+		}
 		text := "You have been unsubscribed successfully!"
-		if err := subscriber.Unsubscribe(ctx, chatID); err != nil {
-			slog.ErrorContext(ctx, "unable to unsubscribe", slog.Int64("chat_id", chatID), slog.Any("error", err))
+		if err := subscriber.Unsubscribe(ctx, msg.Chat.ID); err != nil {
+			slog.ErrorContext(ctx, "unable to unsubscribe", slog.Int64("chat_id", msg.Chat.ID), slog.Any("error", err))
 			text = errorMessage
 		}
-		_ = sendMessage(ctx, b, chatID, text, "")
+		reply(ctx, b, msg.Chat.ID, text, "")
 	}
 }
 
 func HandleOnRaceWeek(raceWeekRepository f1calendar.RaceWeekRepository) bot.HandlerFunc {
 	return func(ctx context.Context, b *bot.Bot, update *models.Update) {
-		message := "no race available"
+		msg := getMessage(update)
+		if msg == nil {
+			return
+		}
+		text, parseMode := "No race available.", models.ParseMode("")
 		rw, err := raceWeekRepository.GetRaceWeek(ctx)
 		switch {
 		case err != nil:
 			slog.ErrorContext(ctx, "unable to get race week", slog.Any("error", err))
-			message = errorMessage
+			text = errorMessage
 		case rw != nil:
-			message = rw.String()
+			text, parseMode = rw.String(), models.ParseModeHTML
 		}
-		_ = sendMessage(ctx, b,
-			getChatID(update),
-			message,
-			models.ParseModeHTML,
-		)
+		reply(ctx, b, msg.Chat.ID, text, parseMode)
 	}
 }
 
-func getChat(b *models.Update) models.Chat {
-	var msg *models.Message
-	switch {
-	case b.Message != nil:
-		msg = b.Message
-	case b.ChannelPost != nil:
-		msg = b.ChannelPost
-	default:
-		panic("unexpected nil message")
+func getMessage(update *models.Update) *models.Message {
+	if update.Message != nil {
+		return update.Message
 	}
-	return msg.Chat
+	return update.ChannelPost
 }
 
-func getChatID(b *models.Update) int64 {
-	return getChat(b).ID
+func reply(ctx context.Context, b *bot.Bot, chatID int64, text string, parseMode models.ParseMode) {
+	if err := sendMessage(ctx, b, chatID, text, parseMode); err != nil {
+		slog.ErrorContext(ctx, "unable to reply", slog.Int64("chat_id", chatID), slog.Any("error", err))
+	}
 }

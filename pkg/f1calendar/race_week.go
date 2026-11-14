@@ -8,6 +8,16 @@ import (
 	"github.com/jedib0t/go-pretty/v6/text"
 )
 
+var sessionNames = map[string]string{
+	"fp1":              "Practice 1",
+	"fp2":              "Practice 2",
+	"fp3":              "Practice 3",
+	"qualifying":       "Qualifying",
+	"sprintQualifying": "Sprint Qualifying",
+	"sprint":           "Sprint",
+	"gp":               "Race",
+}
+
 type RaceWeek struct {
 	Location string
 	Round    int
@@ -17,6 +27,14 @@ type RaceWeek struct {
 type SessionToBeDone struct {
 	Name string
 	Time time.Time
+}
+
+// DisplayName returns a human readable session name.
+func (s SessionToBeDone) DisplayName() string {
+	if n, ok := sessionNames[s.Name]; ok {
+		return n
+	}
+	return s.Name
 }
 
 // upcoming returns a copy of the race week with only the sessions starting after now,
@@ -47,13 +65,7 @@ func (r RaceWeek) String() string {
 	})
 
 	for _, v := range r.Sessions {
-		switch v.Name {
-		case "qualifying":
-			v.Name = "ql"
-		case "sprintQualifying":
-			v.Name = "sql"
-		}
-		tw.AppendRow(table.Row{v.Name, v.Time.Format("2006-01-02 15:04:05")})
+		tw.AppendRow(table.Row{v.DisplayName(), v.Time.Format("Mon 02 Jan 15:04")})
 	}
 
 	return fmt.Sprintf("<pre>%s</pre>", tw.Render())
