@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"runtime/debug"
 	"sync"
 	"syscall"
 	"time"
+	_ "time/tzdata" // embed tz data so the image needs no system zoneinfo
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -36,108 +38,106 @@ import (
 )
 
 const (
-	f1CalendarBaseURL = "https://raw.githubusercontent.com/sportstimes/f1/main/_db/f1"
-	migrateTimeout    = 30 * time.Second
-	shutdownTimeout   = 10 * time.Second
-	healthTimeout     = 3 * time.Second
+	serviceName        = "github.com/alessio-perugini/f1calendarbot"
+	f1CalendarBaseURL  = "https://raw.githubusercontent.com/sportstimes/f1/main/_db/f1"
+	defaultTimezone    = "Europe/Rome"
+	shutdownTimeout    = 10 * time.Second
+	healthCheckTimeout = 3 * time.Second
+	migrateTimeout     = 30 * time.Second
 )
 
-func setupTrace(ctx context.Context) func(ctx context.Context) error {
-	exporter, err := otlptracehttp.New(ctx,
-		otlptracehttp.WithEndpoint(os.Getenv("F1CALENDAR__OTEL_ENDPOINT")),
-		otlptracehttp.WithHeaders(map[string]string{
-			"Authorization": "Bearer " + os.Getenv("F1CALENDAR__OTEL_ENDPOINT_AUTH"),
-		}),
+type config struct {
+	telegramToken string
+	dbURL         string
+	dbAuthToken   string
+	timezone      string
+	otelEndpoint  string
+	otelAuth      string
+}
+
+func loadConfig() config {
+	cfg := config{
+		telegramToken: env.MustGet("F1CALENDAR__TELEGRAM_TOKEN"),
+		dbURL:         env.MustGet("F1CALENDAR__DATABASE_URL"),
+		dbAuthToken:   env.MustGet("F1CALENDAR__TURSO_AUTH_TOKEN"),
+		timezone:      os.Getenv("F1CALENDAR__TIMEZONE"),
+		otelEndpoint:  os.Getenv("F1CALENDAR__OTEL_ENDPOINT"),
+		otelAuth:      os.Getenv("F1CALENDAR__OTEL_ENDPOINT_AUTH"),
+	}
+	if cfg.timezone == "" {
+		cfg.timezone = defaultTimezone
+	}
+	return cfg
+}
+
+// setupOTel installs the OTLP trace, metric and log providers and returns their
+// shutdown function. Without an endpoint, logs only go to stdout.
+func setupOTel(ctx context.Context, cfg config) func(context.Context) error {
+	stdoutHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{})
+	if cfg.otelEndpoint == "" {
+		slog.SetDefault(slog.New(stdoutHandler))
+		return func(context.Context) error { return nil }
+	}
+
+	headers := map[string]string{"Authorization": "Bearer " + cfg.otelAuth}
+
+	traceExporter, err := otlptracehttp.New(ctx,
+		otlptracehttp.WithEndpoint(cfg.otelEndpoint),
+		otlptracehttp.WithHeaders(headers),
 	)
 	if err != nil {
 		panic(err)
 	}
-
-	tp := trace.NewTracerProvider(
-		trace.WithBatcher(exporter),
-	)
-
+	tp := trace.NewTracerProvider(trace.WithBatcher(traceExporter))
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
 	))
 	otel.SetTracerProvider(tp)
 
-	return tp.Shutdown
-}
-
-func setupMetric(ctx context.Context) func(ctx context.Context) error {
-	metricExporter, err := otlpmetrichttp.New(
-		ctx,
-		otlpmetrichttp.WithEndpoint(os.Getenv("F1CALENDAR__OTEL_ENDPOINT")),
-		otlpmetrichttp.WithHeaders(map[string]string{
-			"Authorization": "Bearer " + os.Getenv("F1CALENDAR__OTEL_ENDPOINT_AUTH"),
-		}),
+	metricExporter, err := otlpmetrichttp.New(ctx,
+		otlpmetrichttp.WithEndpoint(cfg.otelEndpoint),
+		otlpmetrichttp.WithHeaders(headers),
 	)
 	if err != nil {
 		panic(err)
 	}
-	mp := metric.NewMeterProvider(
-		metric.WithReader(
-			metric.NewPeriodicReader(
-				metricExporter,
-				metric.WithInterval(5*time.Second),
-			),
-		),
-	)
+	mp := metric.NewMeterProvider(metric.WithReader(metric.NewPeriodicReader(metricExporter, metric.WithInterval(5*time.Second))))
 	otel.SetMeterProvider(mp)
-	return mp.Shutdown
-}
 
-func setupLog(ctx context.Context) func(ctx context.Context) error {
-	exporter, err := otlploghttp.New(
-		ctx,
-		otlploghttp.WithEndpoint(os.Getenv("F1CALENDAR__OTEL_ENDPOINT")),
-		otlploghttp.WithHeaders(map[string]string{
-			"Authorization": "Bearer " + os.Getenv("F1CALENDAR__OTEL_ENDPOINT_AUTH"),
-		}),
+	logExporter, err := otlploghttp.New(ctx,
+		otlploghttp.WithEndpoint(cfg.otelEndpoint),
+		otlploghttp.WithHeaders(headers),
 		otlploghttp.WithTimeout(10*time.Second),
 		otlploghttp.WithCompression(otlploghttp.GzipCompression),
 	)
 	if err != nil {
 		panic(err)
 	}
-
-	lp := log.NewLoggerProvider(
-		log.WithProcessor(log.NewBatchProcessor(exporter)),
-	)
-
+	lp := log.NewLoggerProvider(log.WithProcessor(log.NewBatchProcessor(logExporter)))
 	global.SetLoggerProvider(lp)
 
-	otelHandler := otelslog.NewHandler(
-		os.Getenv("OTEL_SERVICE_NAME"),
-		otelslog.WithLoggerProvider(lp),
-	)
+	otelHandler := otelslog.NewHandler(serviceName, otelslog.WithLoggerProvider(lp))
+	slog.SetDefault(slog.New(slog.NewMultiHandler(stdoutHandler, otelHandler)))
 
-	stdoutHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{})
-
-	slog.SetDefault(
-		slog.New(slog.NewMultiHandler(stdoutHandler, otelHandler)),
-	)
-
-	return lp.Shutdown
+	return func(ctx context.Context) error {
+		return errors.Join(mp.Shutdown(ctx), lp.Shutdown(ctx), tp.Shutdown(ctx))
+	}
 }
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	defer stop()
 
-	sm := setupMetric(ctx)
-	sl := setupLog(ctx)
-	st := setupTrace(ctx)
+	cfg := loadConfig()
 
-	// setup observability
+	shutdownOTel := setupOTel(ctx, cfg)
 	defer func() {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		defer cancel()
-		_ = sm(shutdownCtx)
-		_ = sl(shutdownCtx)
-		_ = st(shutdownCtx)
+		if err := shutdownOTel(shutdownCtx); err != nil {
+			slog.Error("otel shutdown", slog.Any("error", err))
+		}
 	}()
 
 	if err := runtime.Start(); err != nil {
@@ -145,16 +145,18 @@ func main() {
 	}
 
 	if buildInfo, ok := debug.ReadBuildInfo(); ok {
-		slog.Info("f1calendar ", slog.String("buildinfo", buildInfo.String()))
+		slog.Info("f1calendar build", slog.String("version", buildInfo.Main.Version), slog.String("go", buildInfo.GoVersion))
 	}
 
-	tkn := env.MustGet("F1CALENDAR__TELEGRAM_TOKEN")
-	dbURL := env.MustGet("F1CALENDAR__DATABASE_URL")
-	dbAuthToken := env.MustGet("F1CALENDAR__TURSO_AUTH_TOKEN")
-
-	db, err := sql.Open("libsql", fmt.Sprintf("libsql://%s.turso.io?authToken=%s", dbURL, dbAuthToken))
+	loc, err := time.LoadLocation(cfg.timezone)
 	if err != nil {
-		panic(fmt.Errorf("unable to connect to database: %v", err).Error())
+		panic(fmt.Errorf("invalid timezone %q: %w", cfg.timezone, err))
+	}
+
+	dsn := fmt.Sprintf("libsql://%s.turso.io?authToken=%s", cfg.dbURL, url.QueryEscape(cfg.dbAuthToken))
+	db, err := sql.Open("libsql", dsn)
+	if err != nil {
+		panic(fmt.Errorf("unable to connect to database: %w", err))
 	}
 	defer db.Close()
 
@@ -168,66 +170,41 @@ func main() {
 	healthServer := healthCheckServer(db)
 	go func() {
 		if err := healthServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error(err.Error())
+			slog.Error("health server", slog.Any("error", err))
 		}
 	}()
 	defer func() {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 		defer cancel()
 		if err := healthServer.Shutdown(shutdownCtx); err != nil {
-			slog.Error(err.Error())
+			slog.Error("health server shutdown", slog.Any("error", err))
 		}
 	}()
 
-	cachedRaceWeekFetcher := f1calendar.NewCachedRaceWeek(f1calendar.NewCalendarFetcher(f1CalendarBaseURL, time.Local))
+	raceWeekRepository := f1calendar.NewCachedRaceWeek(f1calendar.NewCalendarFetcher(f1CalendarBaseURL, loc))
 	subscriptionStore := subscription.NewStore(db)
 
 	slog.Info("Server is starting...")
 
-	opts := []bot.Option{
+	b, err := bot.New(cfg.telegramToken,
 		bot.WithDefaultHandler(telegram.HandleDefault()),
-		bot.WithErrorsHandler(func(err error) { slog.Error("telegram error", slog.String("error", err.Error())) }),
+		bot.WithErrorsHandler(func(err error) { slog.Error("telegram error", slog.Any("error", err)) }),
 		bot.WithWorkers(3),
 		// run handlers on the workers so b.Start waits for them on shutdown
 		bot.WithNotAsyncHandlers(),
-	}
-	b, err := bot.New(tkn, opts...)
-	if err != nil {
-		panic(err)
-	}
-
-	ok, err := b.SetMyCommands(
-		ctx,
-		&bot.SetMyCommandsParams{
-			Commands: []models.BotCommand{
-				{
-					Command:     "/subscribe",
-					Description: "subscribe to race week alerts",
-				},
-				{
-					Command:     "/unsubscribe",
-					Description: "unsubscribe from race week alerts",
-				},
-				{
-					Command:     "/nextrace",
-					Description: "get the next race week",
-				},
-			},
-		},
 	)
 	if err != nil {
 		panic(err)
 	}
-	if !ok {
-		panic("failed to set my commands")
+
+	if err := setCommands(ctx, b); err != nil {
+		panic(err)
 	}
 
-	telegram.
-		NewTelegramBotHandlers(subscriptionStore, cachedRaceWeekFetcher).
-		RegisterHandlers(b)
+	telegram.NewTelegramBotHandlers(subscriptionStore, raceWeekRepository).RegisterHandlers(b)
 
 	engine := f1calendar.NewEngine(
-		cachedRaceWeekFetcher,
+		raceWeekRepository,
 		f1calendar.NewAlert(
 			f1calendar.SendTelegramAlert(
 				telegram.NewMessageSender(b, subscriptionStore),
@@ -245,10 +222,27 @@ func main() {
 	wg.Wait()
 }
 
+func setCommands(ctx context.Context, b *bot.Bot) error {
+	ok, err := b.SetMyCommands(ctx, &bot.SetMyCommandsParams{
+		Commands: []models.BotCommand{
+			{Command: "/subscribe", Description: "subscribe to race week alerts"},
+			{Command: "/unsubscribe", Description: "unsubscribe from race week alerts"},
+			{Command: "/nextrace", Description: "get the next race week"},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("setting bot commands: %w", err)
+	}
+	if !ok {
+		return errors.New("setting bot commands: telegram returned false")
+	}
+	return nil
+}
+
 func healthCheckServer(db *sql.DB) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), healthTimeout)
+		ctx, cancel := context.WithTimeout(r.Context(), healthCheckTimeout)
 		defer cancel()
 		if err := db.PingContext(ctx); err != nil {
 			slog.ErrorContext(ctx, "healthcheck error", slog.Any("error", err))

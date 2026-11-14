@@ -57,7 +57,11 @@ func (r *RaceWeek) upcoming(now time.Time) *RaceWeek {
 
 func (r RaceWeek) String() string {
 	tw := table.NewWriter()
-	tw.SetTitle(r.Location + " (TZ: Europe/Rome)")
+	title := r.Location
+	if len(r.Sessions) > 0 {
+		title += fmt.Sprintf(" (TZ: %s)", r.Sessions[0].Time.Location())
+	}
+	tw.SetTitle(title)
 	tw.AppendHeader(table.Row{"Session", "Time"})
 	tw.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, AlignFooter: text.AlignCenter, AlignHeader: text.AlignCenter},
