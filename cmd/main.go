@@ -34,7 +34,10 @@ import (
 	"github.com/alessio-perugini/f1calendarbot/pkg/telegram"
 )
 
-const f1CalendarBaseURL = "https://raw.githubusercontent.com/sportstimes/f1/main/_db/f1"
+const (
+	f1CalendarBaseURL = "https://raw.githubusercontent.com/sportstimes/f1/main/_db/f1"
+	migrateTimeout    = 30 * time.Second
+)
 
 func setupTrace(ctx context.Context) func(ctx context.Context) error {
 	exporter, err := otlptracehttp.New(ctx,
@@ -148,6 +151,13 @@ func main() {
 		panic(fmt.Errorf("unable to connect to database: %v", err).Error())
 	}
 	defer db.Close()
+
+	migrateCtx, cancelMigrate := context.WithTimeout(ctx, migrateTimeout)
+	err = subscription.Migrate(migrateCtx, db)
+	cancelMigrate()
+	if err != nil {
+		panic(fmt.Errorf("unable to migrate database: %w", err))
+	}
 
 	healthServer := healthCheckServer(db)
 	go func() {
