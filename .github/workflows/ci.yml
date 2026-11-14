@@ -1,6 +1,8 @@
 name: ci
 
 on:
+  push:
+    branches: [main]
   pull_request:
 
 jobs:
@@ -12,6 +14,7 @@ jobs:
         with:
           go-version-file: go.mod
       - uses: golangci/golangci-lint-action@v9
+      - run: make tidy-check
 
   test:
     runs-on: ubuntu-latest

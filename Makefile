@@ -1,18 +1,22 @@
 build:
-	@CGO_ENABLED=0 go build -buildvcs=false -a -o bin/app ./cmd
+	@CGO_ENABLED=0 go build -trimpath -buildvcs=false -o bin/app ./cmd
 .PHONY: build
 
 test:
-	CGO_ENABLED=0 go test -v ./...
+	go test -race ./...
 .PHONY: test
 
 fmt:
-	goimports -w -local github.com/alessio-perugini/f1calendarbot .
-.PHONY: format
+	golangci-lint fmt
+.PHONY: fmt
 
 lint:
 	golangci-lint run ./...
 .PHONY: lint
+
+tidy-check:
+	go mod tidy -diff
+.PHONY: tidy-check
 
 mod-upgrade:
 	@go get -u ./...
