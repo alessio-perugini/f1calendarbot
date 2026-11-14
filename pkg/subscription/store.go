@@ -33,6 +33,19 @@ func (s *Store) Unsubscribe(ctx context.Context, id int64) error {
 	return nil
 }
 
+// Migrate moves a subscription to the new chat id telegram assigns when a group
+// is upgraded to a supergroup. An existing row for the new id is replaced.
+func (s *Store) Migrate(ctx context.Context, oldID, newID int64) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE OR REPLACE subscribers SET telegram_id = ?, telegram_chat_type = 'supergroup' WHERE telegram_id = ?`,
+		newID, oldID,
+	)
+	if err != nil {
+		return fmt.Errorf("migrating chat %d to %d: %w", oldID, newID, err)
+	}
+	return nil
+}
+
 func (s *Store) GetAllSubscribedChats(ctx context.Context) ([]int64, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT telegram_id FROM subscribers`)
 	if err != nil {

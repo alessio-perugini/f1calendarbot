@@ -9,6 +9,8 @@ import (
 const (
 	subscribersAttempts = 3
 	subscribersBackoff  = 2 * time.Second
+	// telegram allows ~30 messages per second across chats
+	broadcastInterval = 40 * time.Millisecond
 )
 
 type MessageSender interface {
@@ -30,7 +32,10 @@ func SendTelegramAlert(tg MessageSender, subscribers SubscribersLister) AlertFn 
 			slog.ErrorContext(ctx, "alert not sent: unable to get subscribers", slog.Any("error", err))
 			return
 		}
-		for _, chatID := range chats {
+		for i, chatID := range chats {
+			if i > 0 && !sleep(ctx, broadcastInterval) {
+				return
+			}
 			tg.SendMessageTo(ctx, chatID, msg)
 		}
 	}
