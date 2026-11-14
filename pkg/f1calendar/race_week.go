@@ -19,6 +19,24 @@ type SessionToBeDone struct {
 	Time time.Time
 }
 
+// upcoming returns a copy of the race week with only the sessions starting after now,
+// or nil when none is left.
+func (r *RaceWeek) upcoming(now time.Time) *RaceWeek {
+	if r == nil {
+		return nil
+	}
+	sessions := make([]SessionToBeDone, 0, len(r.Sessions))
+	for _, s := range r.Sessions {
+		if now.Before(s.Time) {
+			sessions = append(sessions, s)
+		}
+	}
+	if len(sessions) == 0 {
+		return nil
+	}
+	return &RaceWeek{Location: r.Location, Round: r.Round, Sessions: sessions}
+}
+
 func (r RaceWeek) String() string {
 	tw := table.NewWriter()
 	tw.SetTitle(r.Location + " (TZ: Europe/Rome)")
